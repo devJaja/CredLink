@@ -27,14 +27,24 @@ contract Credlink {
         string name;
         string email;
         string phone_no;
+        string companyName;
         bool isVerified;
         string kycDetails;
         uint256 borrowedAmount;
     }
 
+    struct borrowHistory {
+        address borrowerAddress;
+        uint256 borrowAmount;
+        uint256 borrowTime;
+        uint256 loanDuration;
+        string borrowPurpose;
+    }
+
     mapping(uint256 => address) liquidityPool;
     mapping(address => LiquidityProvider) liquidityProvider;
     mapping (address => Borrower) borrowerDetails;
+    mapping(address => borrowHistory[]) borrowerHistory;
 
 
     function onboardLender(uint256 _liquidityAmount, uint256 _interestRate, uint256 _timeLockInDays) external {
@@ -57,7 +67,7 @@ contract Credlink {
 
     }
 
-    function onboardBorrower(string memory _name, string memory _email, string memory _phone_no) external {
+    function onboardBorrower(string memory _name, string memory _email, string memory _phone_no, string memory _company_name) external {
         require(msg.sender != address(0), "Invalid address");
 
         Borrower memory borrower = Borrower({
@@ -65,6 +75,7 @@ contract Credlink {
             name: _name,
             email: _email,
             phone_no: _phone_no,
+            companyName: _company_name,
             isVerified: false,
             kycDetails: "",
             borrowedAmount: 0
@@ -86,6 +97,43 @@ contract Credlink {
         borrower.isVerified = true;
 
     }
+
+    function borrowFunds(uint256 _amount, uint256 _duration, string memory _purpose) external {
+        require(borrowerDetails[msg.sender].isVerified == true, "Unverified users cannot borrow");
+
+        borrowHistory memory history = borrowHistory({
+            borrowerAddress: msg.sender,
+            borrowAmount: _amount,
+            borrowTime: block.timestamp,
+            loanDuration: _duration,
+            borrowPurpose: _purpose
+        });
+
+        borrowerHistory[msg.sender].push(history);
+
+
+        // Need to add a way of checking borrow history before
+        // approving borrow
+
+        IERC20(tokenAddress).transfer(borrowerDetails[msg.sender].borrowerAddress, _amount);
+
+
+    }
+
+    function lendFunds(uint256 _amount) external {
+        require(liquidityProvider[msg.sender].isActive == true, "Not an active lender");
+
+        IERC20(tokenAddress).transferFrom(msg.sender, address(this), _amount);
+
+        liquidityProvider[msg.sender].liquidityAmount += _amount;
+    }
+
+    // Read functions
+
+    function viewBorrowerHistory() external view returns(borrowHistory[] memory history){
+        history = borrowerHistory[msg.sender];
+    }
+
 
 
 
