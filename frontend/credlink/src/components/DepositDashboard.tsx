@@ -46,7 +46,7 @@ export default function DepositDashboard({ onConfirm, onAllocationChange, curren
           value={amount}
           onChange={(e) => setAmount(Number(e.target.value))}
         />
-        <p className="text-xs text-gray-400 mt-1">Available: 12,500 USDC</p>
+        <p className="text-xs text-gray-400 mt-1">Available: {amount} USDC</p>
       </div>
 
       {/* Allocation sliders */}

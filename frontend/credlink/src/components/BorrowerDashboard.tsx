@@ -1,4 +1,3 @@
-import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const BorrowerDashboard = () => {
@@ -22,14 +21,14 @@ const BorrowerDashboard = () => {
   const { name, email, company, country, phone } = state;
 
   const borrower = {
-    outstandingLoan: '$500,000',
+    outstandingLoan: '$0.00',
     loanStatus: 'Active',
     interestRate: '12% p.a.',
-    dueDate: '2025-07-15',
+    dueDate: false,
     repaymentSchedule: 'Monthly',
     loanType: 'Secured - Long Term',
     nextPayment: {
-      amount: '$15,000',
+      amount: '$0.00',
       dueDate: '2025-06-15'
     },
     paymentHistory: [
@@ -194,7 +193,7 @@ const BorrowerDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
         <button
           className="w-full py-4 px-6 bg-green-600 text-white font-medium rounded-lg shadow hover:bg-green-700 transition"
-          onClick={() => alert('Trigger Get Loan Flow')}
+          onClick={() => navigate('/kyc')}
         >
           🏦 Get a Loan
         </button>

@@ -5,10 +5,12 @@ import Footer from './components/Footer';
 import BorrowerOnboardingForm from './components/BorrowerOnboardingForm';
 import BorrowerProfile from './pages/BorrowerProfile';
 import BorrowerDashboard from './components/BorrowerDashboard';
+import KYCForm from './components/KYCForm';
 
 import './App.css'
 import LenderDashboard from './pages/LenderDashboard';
 import DepositDashboard from './components/DepositDashboard';
+import LoanRequestForm from './components/LoanRequestForm';
 
 function App() {
 
@@ -23,6 +25,8 @@ function App() {
           <Route path='/borrower-dashboard' element={<BorrowerDashboard/>} />
           <Route path='/lender-dashboard' element={<LenderDashboard/>} />
           <Route path='/deposit' element={<DepositDashboard/>} />
+          <Route path='/loan-request' element={<LoanRequestForm/>} />
+          <Route path='/kyc' element={<KYCForm/>} />
         </Routes>
         <Footer/>
       </div>

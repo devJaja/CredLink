@@ -1,4 +1,3 @@
-import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const BorrowerProfile = () => {
@@ -23,7 +22,7 @@ const BorrowerProfile = () => {
 
   const borrower = {
     loanStatus: 'Active',
-    outstandingLoan: '$500,000',
+    outstandingLoan: '$0.00',
   };
 
   return (
@@ -59,7 +58,7 @@ const BorrowerProfile = () => {
       {/* Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
         <button
-          onClick={() => alert('Trigger Get Loan Flow')}
+          onClick={() => navigate('/kyc')}
           className="bg-green-600 text-white py-2.5 rounded-xl hover:bg-green-700 transition font-medium shadow-sm"
         >
           🏦 Get Loan
