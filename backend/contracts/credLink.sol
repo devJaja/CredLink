@@ -28,6 +28,7 @@ contract Credlink {
         string email;
         string phone_no;
         string companyName;
+        string country;
         bool isVerified;
         string kycDetails;
         uint256 borrowedAmount;
@@ -67,7 +68,7 @@ contract Credlink {
 
     }
 
-    function onboardBorrower(string memory _name, string memory _email, string memory _phone_no, string memory _company_name) external {
+    function onboardBorrower(string memory _name, string memory _email, string memory _phone_no, string memory _company_name, string memory _country) external {
         require(msg.sender != address(0), "Invalid address");
 
         Borrower memory borrower = Borrower({
@@ -76,6 +77,7 @@ contract Credlink {
             email: _email,
             phone_no: _phone_no,
             companyName: _company_name,
+            country: _country,
             isVerified: false,
             kycDetails: "",
             borrowedAmount: 0
