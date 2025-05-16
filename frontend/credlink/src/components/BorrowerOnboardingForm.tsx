@@ -1,15 +1,51 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
+import { type BaseError, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import CredlinkABI from '../ABI/Credlink.json';
+
+type BorrowerFormData = {
+  name: string;
+  email: string;
+  phoneNumber: string;
+  companyName: string;
+  country: string;
+};
 
 const BorrowerOnboardingForm = () => {
-  const { register, handleSubmit, formState: { errors }, reset } = useForm();
+  const { register, handleSubmit, formState: { errors } } = useForm<BorrowerFormData>();
   const navigate = useNavigate();
+  const [submittedData, setSubmittedData] = useState<BorrowerFormData | null>(null);
 
-  const onSubmit = (data: any) => {
-    navigate('/borrower-profile', { state: data });
-    reset();
+  const { data: hash, isPending, error, writeContract } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+
+  const onSubmit = (data: BorrowerFormData) => {
+    setSubmittedData(data); 
+    writeContract({
+      address: process.env.CREDLINK_CONTRACT_ADDRESS as `0x${string}`,
+      abi: CredlinkABI,
+      functionName: 'onboardBorrower',
+      args: [
+        data.name,
+        data.email,
+        data.phoneNumber,
+        data.companyName,
+        data.country
+      ],
+    });
+    // reset();
   };
+
+  useEffect(() => {
+    if (isConfirmed && submittedData) {
+      const timeout = setTimeout(() => {
+        navigate("/borrower-profile", { state: submittedData });
+      }, 1000);
+  
+      return () => clearTimeout(timeout);
+    }
+  }, [isConfirmed, navigate, submittedData]);
 
   return (
     <div className="max-w-xl mx-auto p-6 bg-white shadow-lg rounded-lg">
@@ -34,7 +70,13 @@ const BorrowerOnboardingForm = () => {
           <input
             id="email"
             type="email"
-            {...register('email', { required: 'Email is required' })}
+            {...register('email', {
+              required: 'Email is required',
+              pattern: {
+                value: /^\S+@\S+$/,
+                message: 'Invalid email address'
+              }
+            })}
             placeholder="Enter your email"
             className="mt-2 p-3 border rounded-lg w-full"
           />
@@ -42,15 +84,30 @@ const BorrowerOnboardingForm = () => {
         </div>
 
         <div>
-          <label htmlFor="company" className="block text-sm font-medium text-gray-700">Company Name</label>
+          <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">Phone Number</label>
           <input
-            id="company"
+            id="phoneNumber"
             type="text"
-            {...register('company', { required: 'Company Name is required' })}
+            {...register('phoneNumber', {
+              required: 'Phone is required',
+              pattern: { value: /^[0-9]+$/, message: 'Phone must be numeric' }
+            })}
+            placeholder="Enter your phone number"
+            className="mt-2 p-3 border rounded-lg w-full"
+          />
+          {errors.phoneNumber && <p className="text-sm text-red-500">{errors.phoneNumber.message}</p>}
+        </div>
+
+        <div>
+          <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Company Name</label>
+          <input
+            id="companyName"
+            type="text"
+            {...register('companyName', { required: 'Company Name is required' })}
             placeholder="Enter your company name"
             className="mt-2 p-3 border rounded-lg w-full"
           />
-          {errors.company && <p className="text-sm text-red-500">{errors.company.message}</p>}
+          {errors.companyName && <p className="text-sm text-red-500">{errors.companyName.message}</p>}
         </div>
 
         <div>
@@ -65,24 +122,23 @@ const BorrowerOnboardingForm = () => {
           {errors.country && <p className="text-sm text-red-500">{errors.country.message}</p>}
         </div>
 
-        <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone Number</label>
-          <input
-            id="phone"
-            type="text"
-            {...register('phone', { required: 'Phone is required', pattern: /^[0-9]+$/ })}
-            placeholder="Enter your phone number"
-            className="mt-2 p-3 border rounded-lg w-full"
-          />
-          {errors.phone && <p className="text-sm text-red-500">{errors.phone.message}</p>}
-        </div>
-
         <button
+          disabled={isPending}
           type="submit"
           className="bg-[#0A2540] text-white w-full py-3 rounded-full mt-4 hover:bg-[#0a3a60] transition"
         >
-          Submit Onboarding
+          {isPending ? 'Submitting...' : 'Submit Onboarding'}
         </button>
+
+        {/* Status messages */}
+        {hash && <div className="mt-2 text-sm">Transaction Hash: {hash}</div>}
+        {isConfirming && <div className="mt-2 text-sm text-yellow-600">Waiting for confirmation...</div>}
+        {isConfirmed && <div className="mt-2 text-sm text-green-600">Transaction confirmed.</div>}
+        {error && (
+          <div className="mt-2 text-sm text-red-600">
+            Error: {(error as BaseError).shortMessage || error.message}
+          </div>
+        )}
       </form>
     </div>
   );

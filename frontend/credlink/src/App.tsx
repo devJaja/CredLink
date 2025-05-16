@@ -11,6 +11,7 @@ import './App.css'
 import LenderDashboard from './pages/LenderDashboard';
 import DepositDashboard from './components/DepositDashboard';
 import LoanRequestForm from './components/LoanRequestForm';
+import LoanHistory from './components/LoanHistory'
 
 function App() {
 
@@ -27,6 +28,7 @@ function App() {
           <Route path='/deposit' element={<DepositDashboard/>} />
           <Route path='/loan-request' element={<LoanRequestForm/>} />
           <Route path='/kyc' element={<KYCForm/>} />
+          <Route path='/loan-history' element={<LoanHistory/>} />
         </Routes>
         <Footer/>
       </div>

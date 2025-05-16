@@ -18,7 +18,7 @@ const BorrowerDashboard = () => {
     );
   }
 
-  const { name, email, company, country, phone } = state;
+  const { name, email, companyName, country, phoneNumber } = state;
 
   const borrower = {
     outstandingLoan: '$0.00',
@@ -73,9 +73,9 @@ const BorrowerDashboard = () => {
           <ul className="space-y-2 text-gray-700">
             <li><strong>Full Name:</strong> {name}</li>
             <li><strong>Email:</strong> {email}</li>
-            <li><strong>Company:</strong> {company}</li>
+            <li><strong>Company:</strong> {companyName}</li>
             <li><strong>Country:</strong> {country}</li>
-            <li><strong>Phone:</strong> {phone}</li>
+            <li><strong>Phone:</strong> {phoneNumber}</li>
           </ul>
         </div>
 

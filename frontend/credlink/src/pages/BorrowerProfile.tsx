@@ -18,7 +18,7 @@ const BorrowerProfile = () => {
     );
   }
 
-  const { name, email, company, country, phone } = state;
+  const { name, email, companyName, country, phoneNumber } = state;
 
   const borrower = {
     loanStatus: 'Active',
@@ -43,9 +43,9 @@ const BorrowerProfile = () => {
         <ul className="space-y-1.5">
           <li><span className="font-medium text-[#0A2540]">Full Name:</span> {name}</li>
           <li><span className="font-medium text-[#0A2540]">Email Address:</span> {email}</li>
-          <li><span className="font-medium text-[#0A2540]">Company Name:</span> {company}</li>
+          <li><span className="font-medium text-[#0A2540]">Company Name:</span> {companyName}</li>
           <li><span className="font-medium text-[#0A2540]">Country:</span> {country}</li>
-          <li><span className="font-medium text-[#0A2540]">Phone Number:</span> {phone}</li>
+          <li><span className="font-medium text-[#0A2540]">Phone Number:</span> {phoneNumber}</li>
         </ul>
 
         <div className="border-t pt-4">
