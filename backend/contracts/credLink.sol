@@ -122,12 +122,28 @@ contract Credlink {
 
     }
 
-    function lendFunds(uint256 _amount) external {
-        require(liquidityProvider[msg.sender].isActive == true, "Not an active lender");
+    // function lendFunds(uint256 _amount) external {
 
-        IERC20(tokenAddress).transferFrom(msg.sender, address(this), _amount);
+    //     IERC20(tokenAddress).transferFrom(msg.sender, address(this), _amount);
 
-        liquidityProvider[msg.sender].liquidityAmount += _amount;
+    //     liquidityProvider[msg.sender].liquidityAmount += _amount;
+    // }
+
+    function lendFunds() external payable {
+    require(msg.value > 0, "Must send ETH to provide liquidity");
+    
+    // Update the liquidity provider's record
+    // If the provider doesn't exist yet, this will initialize with default values
+    liquidityProvider[msg.sender].providerAddress = msg.sender;
+    liquidityProvider[msg.sender].liquidityAmount += msg.value;
+    liquidityProvider[msg.sender].isActive = true;
+    
+    // If it's their first deposit, set the startDate
+    if (liquidityProvider[msg.sender].startDate == 0) {
+        liquidityProvider[msg.sender].startDate = block.timestamp;
+    }
+    
+    // No need for token transfer since ETH is sent with the transaction
     }
 
     // Read functions
@@ -136,7 +152,9 @@ contract Credlink {
         history = borrowerHistory[msg.sender];
     }
 
-
+    function getBorrowerDetails(address _borrowerAddress) external view returns(Borrower memory borrower) {
+        borrower = borrowerDetails[_borrowerAddress];
+    }
 
 
 
