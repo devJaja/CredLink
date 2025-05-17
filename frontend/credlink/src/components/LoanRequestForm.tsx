@@ -73,7 +73,7 @@ export default function LoanRequestForm({ onSubmit }) {
       setStatus("✅ Loan request confirmed!");
       
       const timeout = setTimeout(() => {
-        navigate("/borrower-profile", { state: submittedData });
+        navigate("/borrower-dashboard", { state: submittedData });
       }, 5000);
   
       return () => clearTimeout(timeout);

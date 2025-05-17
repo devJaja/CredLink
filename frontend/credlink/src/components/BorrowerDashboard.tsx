@@ -32,9 +32,9 @@ const BorrowerDashboard = () => {
       dueDate: '2025-06-15'
     },
     paymentHistory: [
-      { id: 1, date: '2025-04-15', amount: '$15,000', status: 'Paid' },
-      { id: 2, date: '2025-03-15', amount: '$15,000', status: 'Paid' },
-      { id: 3, date: '2025-02-15', amount: '$15,000', status: 'Paid' }
+      { id: 1, date: '', amount: '$', status: '' },
+      { id: 2, date: '', amount: '$', status: '' },
+      { id: 3, date: '', amount: '$', status: '' }
     ],
     repaymentOption: 'Automatic',
     earlyRepayment: {
@@ -42,15 +42,15 @@ const BorrowerDashboard = () => {
       penalty: '2% of outstanding principal'
     },
     applicationHistory: [
-      { date: '2025-01-01', amount: '$300,000', status: 'Rejected', reason: 'Low credit score' },
-      { date: '2024-06-01', amount: '$250,000', status: 'Approved' }
+      { date: '2025-16-05', amount: '$300,000', status: 'Pending', reason: 'Low credit score' },
+      
     ],
     notifications: [
       'Upcoming payment due on 2025-06-15',
       'Missed payment reminder: 2025-05-15',
       'Repayment of $15,000 received on 2025-04-15'
     ],
-    creditScore: 680,
+    creditScore: 0,
     creditLimit: '$750,000',
     supportContact: 'support@loanplatform.com',
     financialTips: [
@@ -152,16 +152,20 @@ const BorrowerDashboard = () => {
       </div>
 
       {/* Application History */}
-      <div className="bg-white p-6 rounded-xl shadow-md border hover:shadow-lg transition shadow mb-8">
+      <div className="bg-white p-6 rounded-xl shadow-md border hover:shadow-lg transition-shadow mb-8">
         <h2 className="text-xl font-semibold mb-4 text-[#0A2223] border-b pb-2">Loan Applications</h2>
         <ul className="text-gray-700 space-y-2">
           {borrower.applicationHistory.map((app, index) => (
             <li key={index}>
-              <strong>Date:</strong> {app.date} | <strong>Amount:</strong> {app.amount} | <strong>Status:</strong> {app.status} {app.reason && (<span>| <strong>Reason:</strong> {app.reason}</span>)}
+              <strong>Amount:</strong> {app.amount} |{" "}
+              <strong>Date:</strong> {app.date} |{" "}
+              <strong>Status:</strong> {app.status} |{" "}
+              <strong>Purpose:</strong> 'business'
             </li>
           ))}
         </ul>
       </div>
+
       
 
       {/* Credit Info */}
