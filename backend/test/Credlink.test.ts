@@ -156,6 +156,60 @@ describe("Credlink Contract Tests", function () {
       expect(borrowerDetails.borrowedAmount).to.equal(0);
       expect(borrowerDetails.kycDetails).to.equal("");
     });
+
+    it("Should allow multiple borrowers to be onboarded", async function () {
+      const { credlink, borrower, otherAccount } = await loadFixture(deployCredlinkFixture);
+      
+      // Onboard first borrower
+      await credlink.connect(borrower).onboardBorrower(
+        "Borrower One",
+        "borrower1@example.com",
+        "+1111111111",
+        "Company One",
+        "USA"
+      );
+      
+      // Onboard second borrower
+      await credlink.connect(otherAccount).onboardBorrower(
+        "Borrower Two",
+        "borrower2@example.com",
+        "+2222222222",
+        "Company Two",
+        "UK"
+      );
+      
+      const borrower1Details = await credlink.getBorrowerDetails(borrower.address);
+      const borrower2Details = await credlink.getBorrowerDetails(otherAccount.address);
+      
+      expect(borrower1Details.name).to.equal("Borrower One");
+      expect(borrower2Details.name).to.equal("Borrower Two");
+    });
+
+    it("Should allow borrower to update their details by re-onboarding", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      // Initial onboarding
+      await credlink.connect(borrower).onboardBorrower(
+        "Original Name",
+        "original@example.com",
+        "+1111111111",
+        "Original Company",
+        "USA"
+      );
+      
+      // Re-onboard with new details
+      await credlink.connect(borrower).onboardBorrower(
+        "Updated Name",
+        "updated@example.com",
+        "+9999999999",
+        "Updated Company",
+        "Canada"
+      );
+      
+      const borrowerDetails = await credlink.getBorrowerDetails(borrower.address);
+      expect(borrowerDetails.name).to.equal("Updated Name");
+      expect(borrowerDetails.email).to.equal("updated@example.com");
+    });
   });
 
   describe("borrowerKYC", function () {
