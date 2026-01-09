@@ -62,6 +62,48 @@ describe("Credlink Contract Tests", function () {
       const finalContractBalance = await usdt.balanceOf(contractAddress);
       expect(finalContractBalance).to.equal(initialContractBalance + liquidityAmount);
     });
+
+    it("Should revert when interest rate is zero", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("1000");
+      const interestRate = 0; // Invalid: zero interest rate
+      const timeLockInDays = 30;
+
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+
+      await expect(
+        credlink.connect(lender).onboardLender(liquidityAmount, interestRate, timeLockInDays)
+      ).to.be.revertedWith("interest rate is less than zero");
+    });
+
+    it("Should revert when interest rate exceeds 30%", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("1000");
+      const interestRate = 31; // Invalid: exceeds 30%
+      const timeLockInDays = 30;
+
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+
+      await expect(
+        credlink.connect(lender).onboardLender(liquidityAmount, interestRate, timeLockInDays)
+      ).to.be.revertedWith("interest rate is greater than 30 %");
+    });
+
+    it("Should accept maximum allowed interest rate of 30%", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("1000");
+      const interestRate = 30; // Maximum allowed
+      const timeLockInDays = 30;
+
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+
+      await expect(
+        credlink.connect(lender).onboardLender(liquidityAmount, interestRate, timeLockInDays)
+      ).to.not.be.reverted;
+    });
   });
 
   describe("onboardBorrower", function () {
