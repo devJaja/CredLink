@@ -349,5 +349,82 @@ describe("Credlink Contract Tests", function () {
       expect(borrowerDetails.kycDetails).to.equal(kycDetail);
     });
   });
+
+  describe("Integration Tests", function () {
+    it("Should complete full borrower onboarding flow: onboard -> KYC", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      // Step 1: Onboard borrower
+      await credlink.connect(borrower).onboardBorrower(
+        "Integration Test User",
+        "integration@example.com",
+        "+5555555555",
+        "Integration Corp",
+        "Germany"
+      );
+      
+      let borrowerDetails = await credlink.getBorrowerDetails(borrower.address);
+      expect(borrowerDetails.isVerified).to.equal(false);
+      
+      // Step 2: Complete KYC
+      await credlink.connect(borrower).borrowerKYC("Integration KYC completed");
+      
+      borrowerDetails = await credlink.getBorrowerDetails(borrower.address);
+      expect(borrowerDetails.isVerified).to.equal(true);
+      expect(borrowerDetails.name).to.equal("Integration Test User");
+    });
+
+    it("Should handle lender and borrower onboarding in parallel", async function () {
+      const { credlink, usdt, lender, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      // Onboard lender
+      const liquidityAmount = hre.ethers.parseEther("2000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      await credlink.connect(lender).onboardLender(liquidityAmount, 12, 45);
+      
+      // Onboard borrower
+      await credlink.connect(borrower).onboardBorrower(
+        "Parallel Test",
+        "parallel@example.com",
+        "+6666666666",
+        "Parallel Inc",
+        "France"
+      );
+      
+      // Verify both were onboarded
+      const borrowerDetails = await credlink.getBorrowerDetails(borrower.address);
+      expect(borrowerDetails.name).to.equal("Parallel Test");
+      
+      const contractBalance = await usdt.balanceOf(await credlink.getAddress());
+      expect(contractBalance).to.equal(liquidityAmount);
+    });
+
+    it("Should maintain state correctly across multiple operations", async function () {
+      const { credlink, usdt, lender, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      // Lender operations
+      const amount1 = hre.ethers.parseEther("1000");
+      await usdt.approve(await credlink.getAddress(), amount1);
+      await credlink.connect(lender).onboardLender(amount1, 10, 30);
+      
+      // Borrower operations
+      await credlink.connect(borrower).onboardBorrower(
+        "State Test",
+        "state@example.com",
+        "+7777777777",
+        "State Corp",
+        "Japan"
+      );
+      
+      await credlink.connect(borrower).borrowerKYC("State verification");
+      
+      // Verify final state
+      const borrowerDetails = await credlink.getBorrowerDetails(borrower.address);
+      expect(borrowerDetails.isVerified).to.equal(true);
+      
+      const contractBalance = await usdt.balanceOf(await credlink.getAddress());
+      expect(contractBalance).to.equal(amount1);
+    });
+  });
 });
 
