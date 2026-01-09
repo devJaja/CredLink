@@ -213,7 +213,75 @@ describe("Credlink Contract Tests", function () {
   });
 
   describe("borrowerKYC", function () {
-    // Test cases will be added in subsequent commits
+    it("Should successfully verify a borrower with valid KYC details", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      // First onboard the borrower
+      await credlink.connect(borrower).onboardBorrower(
+        "John Doe",
+        "john@example.com",
+        "+1234567890",
+        "Tech Corp",
+        "USA"
+      );
+      
+      const kycDetail = "KYC verification completed - ID: 12345, Status: Approved";
+      
+      await expect(
+        credlink.connect(borrower).borrowerKYC(kycDetail)
+      ).to.not.be.reverted;
+    });
+
+    it("Should update borrower verification status after KYC", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Jane Smith",
+        "jane@example.com",
+        "+9876543210",
+        "Finance Inc",
+        "Canada"
+      );
+      
+      const kycDetail = "Verified - Passport: AB123456";
+      
+      await credlink.connect(borrower).borrowerKYC(kycDetail);
+      
+      const borrowerDetails = await credlink.getBorrowerDetails(borrower.address);
+      expect(borrowerDetails.isVerified).to.equal(true);
+      expect(borrowerDetails.kycDetails).to.equal(kycDetail);
+    });
+
+    it("Should allow different borrowers to complete KYC independently", async function () {
+      const { credlink, borrower, otherAccount } = await loadFixture(deployCredlinkFixture);
+      
+      // Onboard both borrowers
+      await credlink.connect(borrower).onboardBorrower(
+        "Borrower One",
+        "borrower1@example.com",
+        "+1111111111",
+        "Company One",
+        "USA"
+      );
+      
+      await credlink.connect(otherAccount).onboardBorrower(
+        "Borrower Two",
+        "borrower2@example.com",
+        "+2222222222",
+        "Company Two",
+        "UK"
+      );
+      
+      // Complete KYC for both
+      await credlink.connect(borrower).borrowerKYC("KYC Details 1");
+      await credlink.connect(otherAccount).borrowerKYC("KYC Details 2");
+      
+      const borrower1Details = await credlink.getBorrowerDetails(borrower.address);
+      const borrower2Details = await credlink.getBorrowerDetails(otherAccount.address);
+      
+      expect(borrower1Details.isVerified).to.equal(true);
+      expect(borrower2Details.isVerified).to.equal(true);
+    });
   });
 });
 
