@@ -282,6 +282,72 @@ describe("Credlink Contract Tests", function () {
       expect(borrower1Details.isVerified).to.equal(true);
       expect(borrower2Details.isVerified).to.equal(true);
     });
+
+    it("Should revert when trying to verify a non-existent borrower", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      // Try to verify without onboarding first
+      await expect(
+        credlink.connect(borrower).borrowerKYC("Some KYC details")
+      ).to.be.revertedWith("Borrower does not exist");
+    });
+
+    it("Should revert when trying to verify twice", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      // Onboard and verify once
+      await credlink.connect(borrower).onboardBorrower(
+        "John Doe",
+        "john@example.com",
+        "+1234567890",
+        "Tech Corp",
+        "USA"
+      );
+      
+      await credlink.connect(borrower).borrowerKYC("First KYC verification");
+      
+      // Try to verify again
+      await expect(
+        credlink.connect(borrower).borrowerKYC("Second KYC verification")
+      ).to.be.revertedWith("cannot verify twice");
+    });
+
+    it("Should revert when KYC details are empty", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "John Doe",
+        "john@example.com",
+        "+1234567890",
+        "Tech Corp",
+        "USA"
+      );
+      
+      await expect(
+        credlink.connect(borrower).borrowerKYC("")
+      ).to.be.revertedWith("Invalid KYC details");
+    });
+
+    it("Should allow KYC with various detail formats", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "John Doe",
+        "john@example.com",
+        "+1234567890",
+        "Tech Corp",
+        "USA"
+      );
+      
+      const kycDetail = "JSON: {\"id\":\"123\",\"status\":\"approved\",\"date\":\"2024-01-01\"}";
+      
+      await expect(
+        credlink.connect(borrower).borrowerKYC(kycDetail)
+      ).to.not.be.reverted;
+      
+      const borrowerDetails = await credlink.getBorrowerDetails(borrower.address);
+      expect(borrowerDetails.kycDetails).to.equal(kycDetail);
+    });
   });
 });
 
