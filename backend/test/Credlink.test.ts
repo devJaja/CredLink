@@ -107,7 +107,55 @@ describe("Credlink Contract Tests", function () {
   });
 
   describe("onboardBorrower", function () {
-    // Test cases will be added in subsequent commits
+    it("Should successfully onboard a borrower with valid details", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      const name = "John Doe";
+      const email = "john.doe@example.com";
+      const phone_no = "+1234567890";
+      const company_name = "Tech Corp";
+      const country = "USA";
+
+      await expect(
+        credlink.connect(borrower).onboardBorrower(name, email, phone_no, company_name, country)
+      ).to.not.be.reverted;
+    });
+
+    it("Should store borrower details correctly", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      const name = "Jane Smith";
+      const email = "jane.smith@example.com";
+      const phone_no = "+9876543210";
+      const company_name = "Finance Inc";
+      const country = "Canada";
+
+      await credlink.connect(borrower).onboardBorrower(name, email, phone_no, company_name, country);
+      
+      const borrowerDetails = await credlink.getBorrowerDetails(borrower.address);
+      expect(borrowerDetails.name).to.equal(name);
+      expect(borrowerDetails.email).to.equal(email);
+      expect(borrowerDetails.phone_no).to.equal(phone_no);
+      expect(borrowerDetails.companyName).to.equal(company_name);
+      expect(borrowerDetails.country).to.equal(country);
+    });
+
+    it("Should initialize borrower with unverified status", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Test User",
+        "test@example.com",
+        "+1111111111",
+        "Test Company",
+        "UK"
+      );
+      
+      const borrowerDetails = await credlink.getBorrowerDetails(borrower.address);
+      expect(borrowerDetails.isVerified).to.equal(false);
+      expect(borrowerDetails.borrowedAmount).to.equal(0);
+      expect(borrowerDetails.kycDetails).to.equal("");
+    });
   });
 
   describe("borrowerKYC", function () {
