@@ -27,7 +27,41 @@ describe("Credlink Contract Tests", function () {
   }
 
   describe("onboardLender", function () {
-    // Test cases will be added in subsequent commits
+    it("Should successfully onboard a lender with valid parameters", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("1000");
+      const interestRate = 10; // 10%
+      const timeLockInDays = 30;
+
+      // Approve tokens for transfer
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+
+      // Onboard lender
+      await expect(credlink.connect(lender).onboardLender(liquidityAmount, interestRate, timeLockInDays))
+        .to.not.be.reverted;
+
+      // Verify lender was onboarded
+      // Note: We'll add getter functions or events to verify state
+    });
+
+    it("Should transfer tokens from lender to contract", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("500");
+      const interestRate = 15;
+      const timeLockInDays = 60;
+
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      
+      const contractAddress = await credlink.getAddress();
+      const initialContractBalance = await usdt.balanceOf(contractAddress);
+      
+      await credlink.connect(lender).onboardLender(liquidityAmount, interestRate, timeLockInDays);
+      
+      const finalContractBalance = await usdt.balanceOf(contractAddress);
+      expect(finalContractBalance).to.equal(initialContractBalance + liquidityAmount);
+    });
   });
 
   describe("onboardBorrower", function () {
