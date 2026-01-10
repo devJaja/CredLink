@@ -607,6 +607,53 @@ describe("Credlink Contract Tests", function () {
       const contractBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
       expect(contractBalance).to.equal(depositAmount);
     });
+
+    it("Should revert when trying to deposit zero ETH", async function () {
+      const { credlink, lender } = await loadFixture(deployCredlinkFixture);
+      
+      await expect(
+        credlink.connect(lender).lendFunds({ value: 0 })
+      ).to.be.revertedWith("Must send ETH to provide liquidity");
+    });
+
+    it("Should allow multiple deposits from same lender", async function () {
+      const { credlink, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const firstDeposit = hre.ethers.parseEther("1.0");
+      const secondDeposit = hre.ethers.parseEther("2.0");
+      
+      await credlink.connect(lender).lendFunds({ value: firstDeposit });
+      await credlink.connect(lender).lendFunds({ value: secondDeposit });
+      
+      const contractBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
+      expect(contractBalance).to.equal(firstDeposit + secondDeposit);
+    });
+
+    it("Should allow multiple lenders to deposit independently", async function () {
+      const { credlink, lender, otherAccount } = await loadFixture(deployCredlinkFixture);
+      
+      const lender1Deposit = hre.ethers.parseEther("1.5");
+      const lender2Deposit = hre.ethers.parseEther("2.5");
+      
+      await credlink.connect(lender).lendFunds({ value: lender1Deposit });
+      await credlink.connect(otherAccount).lendFunds({ value: lender2Deposit });
+      
+      const contractBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
+      expect(contractBalance).to.equal(lender1Deposit + lender2Deposit);
+    });
+
+    it("Should handle various deposit amounts correctly", async function () {
+      const { credlink, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const smallAmount = hre.ethers.parseEther("0.001");
+      const largeAmount = hre.ethers.parseEther("10.0");
+      
+      await credlink.connect(lender).lendFunds({ value: smallAmount });
+      await credlink.connect(lender).lendFunds({ value: largeAmount });
+      
+      const contractBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
+      expect(contractBalance).to.equal(smallAmount + largeAmount);
+    });
   });
 
   describe("viewBorrowerHistory", function () {
