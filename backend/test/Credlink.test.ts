@@ -491,6 +491,70 @@ describe("Credlink Contract Tests", function () {
       expect(history[0].borrowAmount).to.equal(borrowAmount);
       expect(history[0].borrowPurpose).to.equal(purpose);
     });
+
+    it("Should revert when unverified borrower tries to borrow", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      // Onboard borrower but don't complete KYC
+      await credlink.connect(borrower).onboardBorrower(
+        "Unverified",
+        "unverified@example.com",
+        "+1111111111",
+        "Test Corp",
+        "USA"
+      );
+      
+      // Setup lender to ensure contract has funds
+      const liquidityAmount = hre.ethers.parseEther("5000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      await credlink.connect(lender).onboardLender(liquidityAmount, 10, 30);
+      
+      await expect(
+        credlink.connect(borrower).borrowFunds(hre.ethers.parseEther("100"), 30, "Test")
+      ).to.be.revertedWith("Unverified users cannot borrow");
+    });
+
+    it("Should allow multiple borrows from same borrower", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      // First borrow
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("500"),
+        30,
+        "First loan"
+      );
+      
+      // Second borrow
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("300"),
+        60,
+        "Second loan"
+      );
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(2);
+      expect(history[0].borrowPurpose).to.equal("First loan");
+      expect(history[1].borrowPurpose).to.equal("Second loan");
+    });
+
+    it("Should record correct timestamp and duration for borrow", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const duration = 45;
+      const beforeBorrow = await hre.ethers.provider.getBlock("latest");
+      
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("200"),
+        duration,
+        "Timestamp test"
+      );
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history[0].borrowTime).to.be.at.least(beforeBorrow?.timestamp || 0);
+      expect(history[0].loanDuration).to.equal(duration);
+    });
   });
 
   describe("lendFunds", function () {
