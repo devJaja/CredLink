@@ -450,7 +450,47 @@ describe("Credlink Contract Tests", function () {
   }
 
   describe("borrowFunds", function () {
-    // Test cases will be added in subsequent commits
+    it("Should successfully allow verified borrower to borrow funds", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const borrowAmount = hre.ethers.parseEther("1000");
+      const duration = 30; // 30 days
+      const purpose = "Business expansion";
+      
+      await expect(
+        credlink.connect(borrower).borrowFunds(borrowAmount, duration, purpose)
+      ).to.not.be.reverted;
+    });
+
+    it("Should transfer tokens to borrower when borrowing", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const borrowAmount = hre.ethers.parseEther("500");
+      const initialBalance = await usdt.balanceOf(borrower.address);
+      
+      await credlink.connect(borrower).borrowFunds(borrowAmount, 60, "Working capital");
+      
+      const finalBalance = await usdt.balanceOf(borrower.address);
+      expect(finalBalance).to.equal(initialBalance + borrowAmount);
+    });
+
+    it("Should record borrow history after successful borrow", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const borrowAmount = hre.ethers.parseEther("750");
+      const duration = 90;
+      const purpose = "Equipment purchase";
+      
+      await credlink.connect(borrower).borrowFunds(borrowAmount, duration, purpose);
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(1);
+      expect(history[0].borrowAmount).to.equal(borrowAmount);
+      expect(history[0].borrowPurpose).to.equal(purpose);
+    });
   });
 
   describe("lendFunds", function () {
