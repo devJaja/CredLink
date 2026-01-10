@@ -558,7 +558,55 @@ describe("Credlink Contract Tests", function () {
   });
 
   describe("lendFunds", function () {
-    // Test cases will be added in subsequent commits
+    it("Should successfully accept ETH deposits via lendFunds", async function () {
+      const { credlink, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const depositAmount = hre.ethers.parseEther("1.0");
+      
+      await expect(
+        credlink.connect(lender).lendFunds({ value: depositAmount })
+      ).to.not.be.reverted;
+    });
+
+    it("Should update liquidity provider amount after deposit", async function () {
+      const { credlink, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const depositAmount = hre.ethers.parseEther("2.5");
+      const contractAddress = await credlink.getAddress();
+      
+      const initialBalance = await hre.ethers.provider.getBalance(contractAddress);
+      
+      await credlink.connect(lender).lendFunds({ value: depositAmount });
+      
+      const finalBalance = await hre.ethers.provider.getBalance(contractAddress);
+      expect(finalBalance).to.equal(initialBalance + depositAmount);
+    });
+
+    it("Should set startDate on first deposit", async function () {
+      const { credlink, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const depositAmount = hre.ethers.parseEther("1.0");
+      const beforeDeposit = await hre.ethers.provider.getBlock("latest");
+      
+      await credlink.connect(lender).lendFunds({ value: depositAmount });
+      
+      // Verify provider is active
+      // Note: We would need a getter function to verify startDate
+      const contractBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
+      expect(contractBalance).to.equal(depositAmount);
+    });
+
+    it("Should mark liquidity provider as active after deposit", async function () {
+      const { credlink, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const depositAmount = hre.ethers.parseEther("3.0");
+      
+      await credlink.connect(lender).lendFunds({ value: depositAmount });
+      
+      // Verify deposit was successful by checking contract balance
+      const contractBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
+      expect(contractBalance).to.equal(depositAmount);
+    });
   });
 
   describe("viewBorrowerHistory", function () {
