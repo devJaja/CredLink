@@ -426,5 +426,39 @@ describe("Credlink Contract Tests", function () {
       expect(contractBalance).to.equal(amount1);
     });
   });
+
+  // Helper function to setup a verified borrower for borrowFunds tests
+  async function setupVerifiedBorrower(credlink: any, usdt: any, borrower: any, lender: any) {
+    // Onboard borrower
+    await credlink.connect(borrower).onboardBorrower(
+      "Test Borrower",
+      "borrower@example.com",
+      "+1234567890",
+      "Test Company",
+      "USA"
+    );
+    
+    // Complete KYC
+    await credlink.connect(borrower).borrowerKYC("KYC verification completed");
+    
+    // Ensure contract has funds by onboarding a lender
+    const liquidityAmount = hre.ethers.parseEther("5000");
+    await usdt.approve(await credlink.getAddress(), liquidityAmount);
+    await credlink.connect(lender).onboardLender(liquidityAmount, 10, 30);
+    
+    return { credlink, usdt, borrower, lender };
+  }
+
+  describe("borrowFunds", function () {
+    // Test cases will be added in subsequent commits
+  });
+
+  describe("lendFunds", function () {
+    // Test cases will be added in subsequent commits
+  });
+
+  describe("viewBorrowerHistory", function () {
+    // Test cases will be added in subsequent commits
+  });
 });
 
