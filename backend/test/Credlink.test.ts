@@ -721,6 +721,96 @@ describe("Credlink Contract Tests", function () {
       expect(history[1].borrowPurpose).to.equal("Second borrow");
       expect(history[2].borrowPurpose).to.equal("Third borrow");
     });
+
+    it("Should only return history for the calling borrower", async function () {
+      const { credlink, usdt, borrower, otherAccount, lender } = await loadFixture(deployCredlinkFixture);
+      
+      // Setup both borrowers
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      await credlink.connect(otherAccount).onboardBorrower(
+        "Other Borrower",
+        "other@example.com",
+        "+2222222222",
+        "Other Corp",
+        "UK"
+      );
+      await credlink.connect(otherAccount).borrowerKYC("Other KYC");
+      
+      // Setup more funds for second borrower
+      const moreFunds = hre.ethers.parseEther("3000");
+      await usdt.approve(await credlink.getAddress(), moreFunds);
+      await credlink.connect(lender).onboardLender(moreFunds, 12, 30);
+      
+      // Both borrowers borrow
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("500"),
+        30,
+        "Borrower 1 loan"
+      );
+      
+      await credlink.connect(otherAccount).borrowFunds(
+        hre.ethers.parseEther("600"),
+        45,
+        "Borrower 2 loan"
+      );
+      
+      // Each should only see their own history
+      const borrower1History = await credlink.connect(borrower).viewBorrowerHistory();
+      const borrower2History = await credlink.connect(otherAccount).viewBorrowerHistory();
+      
+      expect(borrower1History.length).to.equal(1);
+      expect(borrower2History.length).to.equal(1);
+      expect(borrower1History[0].borrowPurpose).to.equal("Borrower 1 loan");
+      expect(borrower2History[0].borrowPurpose).to.equal("Borrower 2 loan");
+    });
+
+    it("Should preserve borrow timestamps in history", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const beforeFirst = await hre.ethers.provider.getBlock("latest");
+      
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("400"),
+        30,
+        "Timestamp test"
+      );
+      
+      const afterFirst = await hre.ethers.provider.getBlock("latest");
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      
+      expect(history[0].borrowTime).to.be.at.least(beforeFirst?.timestamp || 0);
+      expect(history[0].borrowTime).to.be.at.most(afterFirst?.timestamp || Number.MAX_SAFE_INTEGER);
+    });
+
+    it("Should handle viewing history with different borrow amounts and durations", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const amounts = [
+        hre.ethers.parseEther("100"),
+        hre.ethers.parseEther("500"),
+        hre.ethers.parseEther("1000")
+      ];
+      const durations = [15, 30, 90];
+      
+      for (let i = 0; i < amounts.length; i++) {
+        await credlink.connect(borrower).borrowFunds(
+          amounts[i],
+          durations[i],
+          `Loan ${i + 1}`
+        );
+      }
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(3);
+      
+      for (let i = 0; i < history.length; i++) {
+        expect(history[i].borrowAmount).to.equal(amounts[i]);
+        expect(history[i].loanDuration).to.equal(durations[i]);
+      }
+    });
   });
 });
 
