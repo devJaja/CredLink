@@ -1285,5 +1285,54 @@ describe("Credlink Contract Tests", function () {
       }
     });
   });
+
+  describe("Contract Balance and Token Flow Verification", function () {
+    it("Should correctly track contract token balance after lender onboarding", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("5000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      
+      const contractAddress = await credlink.getAddress();
+      const initialBalance = await usdt.balanceOf(contractAddress);
+      
+      await credlink.connect(lender).onboardLender(liquidityAmount, 10, 30);
+      
+      const finalBalance = await usdt.balanceOf(contractAddress);
+      expect(finalBalance).to.equal(initialBalance + liquidityAmount);
+    });
+
+    it("Should correctly track contract ETH balance after lendFunds", async function () {
+      const { credlink, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const depositAmount = hre.ethers.parseEther("2.5");
+      const contractAddress = await credlink.getAddress();
+      const initialBalance = await hre.ethers.provider.getBalance(contractAddress);
+      
+      await credlink.connect(lender).lendFunds({ value: depositAmount });
+      
+      const finalBalance = await hre.ethers.provider.getBalance(contractAddress);
+      expect(finalBalance).to.equal(initialBalance + depositAmount);
+    });
+
+    it("Should decrease contract balance when borrower borrows funds", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("10000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      await credlink.connect(lender).onboardLender(liquidityAmount, 10, 30);
+      
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const borrowAmount = hre.ethers.parseEther("3000");
+      const contractAddress = await credlink.getAddress();
+      const initialBalance = await usdt.balanceOf(contractAddress);
+      
+      await credlink.connect(borrower).borrowFunds(borrowAmount, 30, "Balance test");
+      
+      const finalBalance = await usdt.balanceOf(contractAddress);
+      expect(finalBalance).to.equal(initialBalance - borrowAmount);
+    });
+  });
 });
 
