@@ -1108,5 +1108,45 @@ describe("Credlink Contract Tests", function () {
       expect(details.name).to.equal("Public Test");
     });
   });
+
+  describe("Boundary Conditions and Edge Cases", function () {
+    it("Should handle maximum interest rate (30%) in onboardLender", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("1000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      
+      await expect(
+        credlink.connect(lender).onboardLender(liquidityAmount, 30, 365)
+      ).to.not.be.reverted;
+    });
+
+    it("Should handle minimum interest rate (1%) in onboardLender", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("1000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      
+      await expect(
+        credlink.connect(lender).onboardLender(liquidityAmount, 1, 1)
+      ).to.not.be.reverted;
+    });
+
+    it("Should handle very large borrow amounts", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      // Setup large liquidity
+      const largeLiquidity = hre.ethers.parseEther("100000");
+      await usdt.approve(await credlink.getAddress(), largeLiquidity);
+      await credlink.connect(lender).onboardLender(largeLiquidity, 10, 30);
+      
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const largeBorrow = hre.ethers.parseEther("50000");
+      await expect(
+        credlink.connect(borrower).borrowFunds(largeBorrow, 90, "Large loan")
+      ).to.not.be.reverted;
+    });
+  });
 });
 
