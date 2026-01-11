@@ -1069,6 +1069,44 @@ describe("Credlink Contract Tests", function () {
       expect(details.country).to.equal(country);
       expect(details.isVerified).to.equal(false);
     });
+
+    it("Should return updated verification status after KYC", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "KYC Test",
+        "kyc@example.com",
+        "+6666666666",
+        "KYC Corp",
+        "France"
+      );
+      
+      let details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.isVerified).to.equal(false);
+      expect(details.kycDetails).to.equal("");
+      
+      await credlink.connect(borrower).borrowerKYC("KYC verification passed");
+      
+      details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.isVerified).to.equal(true);
+      expect(details.kycDetails).to.equal("KYC verification passed");
+    });
+
+    it("Should allow anyone to view borrower details", async function () {
+      const { credlink, borrower, otherAccount } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Public Test",
+        "public@example.com",
+        "+7777777777",
+        "Public Corp",
+        "Italy"
+      );
+      
+      // Other account can view borrower details
+      const details = await credlink.connect(otherAccount).getBorrowerDetails(borrower.address);
+      expect(details.name).to.equal("Public Test");
+    });
   });
 });
 
