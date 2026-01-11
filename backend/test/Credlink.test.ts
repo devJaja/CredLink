@@ -1334,5 +1334,63 @@ describe("Credlink Contract Tests", function () {
       expect(finalBalance).to.equal(initialBalance - borrowAmount);
     });
   });
+
+  describe("Multiple User Interactions and Concurrency", function () {
+    it("Should handle concurrent lender onboarding from multiple lenders", async function () {
+      const { credlink, usdt, lender, otherAccount } = await loadFixture(deployCredlinkFixture);
+      
+      const amount1 = hre.ethers.parseEther("3000");
+      const amount2 = hre.ethers.parseEther("4000");
+      
+      await usdt.approve(await credlink.getAddress(), amount1);
+      await usdt.approve(await credlink.getAddress(), amount2);
+      
+      await credlink.connect(lender).onboardLender(amount1, 10, 30);
+      await credlink.connect(otherAccount).onboardLender(amount2, 15, 60);
+      
+      const contractBalance = await usdt.balanceOf(await credlink.getAddress());
+      expect(contractBalance).to.equal(amount1 + amount2);
+    });
+
+    it("Should handle multiple borrowers borrowing simultaneously", async function () {
+      const { credlink, usdt, borrower, otherAccount, lender } = await loadFixture(deployCredlinkFixture);
+      
+      // Setup large liquidity
+      const largeLiquidity = hre.ethers.parseEther("20000");
+      await usdt.approve(await credlink.getAddress(), largeLiquidity);
+      await credlink.connect(lender).onboardLender(largeLiquidity, 10, 30);
+      
+      // Setup both borrowers
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      await credlink.connect(otherAccount).onboardBorrower(
+        "Borrower 2",
+        "borrower2@example.com",
+        "+2222222222",
+        "Corp 2",
+        "UK"
+      );
+      await credlink.connect(otherAccount).borrowerKYC("KYC 2");
+      
+      // Both borrow simultaneously
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("2000"),
+        30,
+        "Loan 1"
+      );
+      
+      await credlink.connect(otherAccount).borrowFunds(
+        hre.ethers.parseEther("3000"),
+        60,
+        "Loan 2"
+      );
+      
+      const history1 = await credlink.connect(borrower).viewBorrowerHistory();
+      const history2 = await credlink.connect(otherAccount).viewBorrowerHistory();
+      
+      expect(history1.length).to.equal(1);
+      expect(history2.length).to.equal(1);
+    });
+  });
 });
 
