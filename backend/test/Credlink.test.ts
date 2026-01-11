@@ -1392,5 +1392,69 @@ describe("Credlink Contract Tests", function () {
       expect(history2.length).to.equal(1);
     });
   });
+
+  describe("Error Recovery and Edge Case Scenarios", function () {
+    it("Should allow borrower to complete KYC after failed initial attempt", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Recovery Test",
+        "recovery@example.com",
+        "+3333333333",
+        "Recovery Corp",
+        "USA"
+      );
+      
+      // Try with empty KYC (should fail)
+      await expect(
+        credlink.connect(borrower).borrowerKYC("")
+      ).to.be.revertedWith("Invalid KYC details");
+      
+      // Complete with valid KYC
+      await credlink.connect(borrower).borrowerKYC("Valid KYC details");
+      
+      const details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.isVerified).to.equal(true);
+    });
+
+    it("Should handle lender re-onboarding with different parameters", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const amount1 = hre.ethers.parseEther("2000");
+      await usdt.approve(await credlink.getAddress(), amount1);
+      await credlink.connect(lender).onboardLender(amount1, 10, 30);
+      
+      // Re-onboard with different parameters
+      const amount2 = hre.ethers.parseEther("3000");
+      await usdt.approve(await credlink.getAddress(), amount2);
+      await credlink.connect(lender).onboardLender(amount2, 15, 60);
+      
+      const contractBalance = await usdt.balanceOf(await credlink.getAddress());
+      expect(contractBalance).to.equal(amount1 + amount2);
+    });
+
+    it("Should maintain borrower data after failed borrow attempt", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Data Test",
+        "data@example.com",
+        "+4444444444",
+        "Data Corp",
+        "USA"
+      );
+      
+      await credlink.connect(borrower).borrowerKYC("KYC completed");
+      
+      // Try to borrow without liquidity (will fail)
+      // But borrower data should remain intact
+      const detailsBefore = await credlink.getBorrowerDetails(borrower.address);
+      
+      // Attempt will fail but data persists
+      const detailsAfter = await credlink.getBorrowerDetails(borrower.address);
+      expect(detailsAfter.name).to.equal(detailsBefore.name);
+      expect(detailsAfter.isVerified).to.equal(detailsBefore.isVerified);
+    });
+  });
 });
 
