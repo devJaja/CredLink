@@ -1039,5 +1039,36 @@ describe("Credlink Contract Tests", function () {
       expect(contractEthBalance).to.equal(hre.ethers.parseEther("10.0"));
     });
   });
+
+  describe("getBorrowerDetails", function () {
+    it("Should return empty borrower details for non-existent borrower", async function () {
+      const { credlink, otherAccount } = await loadFixture(deployCredlinkFixture);
+      
+      const details = await credlink.getBorrowerDetails(otherAccount.address);
+      expect(details.name).to.equal("");
+      expect(details.isVerified).to.equal(false);
+      expect(details.borrowedAmount).to.equal(0);
+    });
+
+    it("Should return correct borrower details after onboarding", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      const name = "Detail Test";
+      const email = "detail@example.com";
+      const phone = "+5555555555";
+      const company = "Detail Corp";
+      const country = "Germany";
+      
+      await credlink.connect(borrower).onboardBorrower(name, email, phone, company, country);
+      
+      const details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.name).to.equal(name);
+      expect(details.email).to.equal(email);
+      expect(details.phone_no).to.equal(phone);
+      expect(details.companyName).to.equal(company);
+      expect(details.country).to.equal(country);
+      expect(details.isVerified).to.equal(false);
+    });
+  });
 });
 
