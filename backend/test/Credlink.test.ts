@@ -1226,5 +1226,64 @@ describe("Credlink Contract Tests", function () {
       ).to.be.revertedWith("interest rate is greater than 30 %");
     });
   });
+
+  describe("State Consistency and Data Integrity", function () {
+    it("Should maintain consistent borrower state across multiple operations", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      // Onboard
+      await credlink.connect(borrower).onboardBorrower(
+        "State Test",
+        "state@example.com",
+        "+1111111111",
+        "State Corp",
+        "USA"
+      );
+      
+      let details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.isVerified).to.equal(false);
+      
+      // KYC
+      await credlink.connect(borrower).borrowerKYC("State KYC");
+      details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.isVerified).to.equal(true);
+      
+      // Borrow
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("500"),
+        30,
+        "State test loan"
+      );
+      
+      // Verify state remains consistent
+      details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.isVerified).to.equal(true);
+      expect(details.name).to.equal("State Test");
+    });
+
+    it("Should preserve borrower history after multiple borrows", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const amounts = [
+        hre.ethers.parseEther("100"),
+        hre.ethers.parseEther("200"),
+        hre.ethers.parseEther("300")
+      ];
+      
+      for (let i = 0; i < amounts.length; i++) {
+        await credlink.connect(borrower).borrowFunds(amounts[i], 30, `Loan ${i + 1}`);
+      }
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(3);
+      
+      // Verify all amounts are preserved
+      for (let i = 0; i < history.length; i++) {
+        expect(history[i].borrowAmount).to.equal(amounts[i]);
+      }
+    });
+  });
 });
 
