@@ -1147,6 +1147,42 @@ describe("Credlink Contract Tests", function () {
         credlink.connect(borrower).borrowFunds(largeBorrow, 90, "Large loan")
       ).to.not.be.reverted;
     });
+
+    it("Should handle very small ETH deposits in lendFunds", async function () {
+      const { credlink, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const smallAmount = hre.ethers.parseEther("0.000001");
+      await expect(
+        credlink.connect(lender).lendFunds({ value: smallAmount })
+      ).to.not.be.reverted;
+    });
+
+    it("Should handle zero duration in borrowFunds", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      await expect(
+        credlink.connect(borrower).borrowFunds(
+          hre.ethers.parseEther("100"),
+          0,
+          "Zero duration test"
+        )
+      ).to.not.be.reverted;
+    });
+
+    it("Should handle very long loan durations", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const longDuration = 3650; // 10 years
+      await expect(
+        credlink.connect(borrower).borrowFunds(
+          hre.ethers.parseEther("500"),
+          longDuration,
+          "Long term loan"
+        )
+      ).to.not.be.reverted;
+    });
   });
 });
 
