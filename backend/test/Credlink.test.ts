@@ -1184,5 +1184,47 @@ describe("Credlink Contract Tests", function () {
       ).to.not.be.reverted;
     });
   });
+
+  describe("Error Handling and Revert Scenarios", function () {
+    it("Should revert borrowFunds when contract has insufficient balance", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      // Setup borrower
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      // Try to borrow more than available
+      const availableLiquidity = hre.ethers.parseEther("5000");
+      const excessiveBorrow = hre.ethers.parseEther("10000");
+      
+      // This will fail because contract doesn't have enough tokens
+      // The transfer will revert due to insufficient balance
+      await expect(
+        credlink.connect(borrower).borrowFunds(excessiveBorrow, 30, "Excessive borrow")
+      ).to.be.reverted;
+    });
+
+    it("Should revert onboardLender when token approval is insufficient", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("1000");
+      // Don't approve or approve less than needed
+      await usdt.approve(await credlink.getAddress(), hre.ethers.parseEther("500"));
+      
+      await expect(
+        credlink.connect(lender).onboardLender(liquidityAmount, 10, 30)
+      ).to.be.reverted;
+    });
+
+    it("Should revert onboardLender when interest rate is exactly 31%", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("1000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      
+      await expect(
+        credlink.connect(lender).onboardLender(liquidityAmount, 31, 30)
+      ).to.be.revertedWith("interest rate is greater than 30 %");
+    });
+  });
 });
 
