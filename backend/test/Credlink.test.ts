@@ -1605,5 +1605,39 @@ describe("Credlink Contract Tests", function () {
       expect(details.kycDetails).to.equal(longKYC);
     });
   });
+
+  describe("Liquidity Provider State Management", function () {
+    it("Should accumulate liquidity from multiple ETH deposits", async function () {
+      const { credlink, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const deposit1 = hre.ethers.parseEther("1.0");
+      const deposit2 = hre.ethers.parseEther("2.0");
+      const deposit3 = hre.ethers.parseEther("1.5");
+      
+      await credlink.connect(lender).lendFunds({ value: deposit1 });
+      await credlink.connect(lender).lendFunds({ value: deposit2 });
+      await credlink.connect(lender).lendFunds({ value: deposit3 });
+      
+      const contractBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
+      expect(contractBalance).to.equal(deposit1 + deposit2 + deposit3);
+    });
+
+    it("Should handle lender providing both token and ETH liquidity", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const tokenAmount = hre.ethers.parseEther("5000");
+      await usdt.approve(await credlink.getAddress(), tokenAmount);
+      await credlink.connect(lender).onboardLender(tokenAmount, 10, 30);
+      
+      const ethAmount = hre.ethers.parseEther("3.0");
+      await credlink.connect(lender).lendFunds({ value: ethAmount });
+      
+      const tokenBalance = await usdt.balanceOf(await credlink.getAddress());
+      const ethBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
+      
+      expect(tokenBalance).to.equal(tokenAmount);
+      expect(ethBalance).to.equal(ethAmount);
+    });
+  });
 });
 
