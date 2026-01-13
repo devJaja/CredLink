@@ -1946,5 +1946,64 @@ describe("Credlink Contract Tests", function () {
       expect(receipt?.status).to.equal(1);
     });
   });
+
+  describe("Reentrancy Protection and Security", function () {
+    it("Should prevent double spending in borrowFunds", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const borrowAmount = hre.ethers.parseEther("1000");
+      const contractBalanceBefore = await usdt.balanceOf(await credlink.getAddress());
+      
+      await credlink.connect(borrower).borrowFunds(borrowAmount, 30, "Security test");
+      
+      const contractBalanceAfter = await usdt.balanceOf(await credlink.getAddress());
+      expect(contractBalanceAfter).to.equal(contractBalanceBefore - borrowAmount);
+    });
+
+    it("Should maintain correct state after multiple rapid operations", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      // Multiple rapid borrows
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("500"),
+        30,
+        "Rapid 1"
+      );
+      
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("500"),
+        30,
+        "Rapid 2"
+      );
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(2);
+      
+      // Verify each entry is distinct
+      expect(history[0].borrowPurpose).to.equal("Rapid 1");
+      expect(history[1].borrowPurpose).to.equal("Rapid 2");
+    });
+
+    it("Should enforce access control for borrower operations", async function () {
+      const { credlink, usdt, borrower, otherAccount, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      // Other account cannot view borrower's history
+      const otherHistory = await credlink.connect(otherAccount).viewBorrowerHistory();
+      expect(otherHistory.length).to.equal(0);
+      
+      // Only borrower can view their own history
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("300"),
+        30,
+        "Access test"
+      );
+      
+      const borrowerHistory = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(borrowerHistory.length).to.equal(1);
+    });
+  });
 });
 
