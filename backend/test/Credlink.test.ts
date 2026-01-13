@@ -1553,5 +1553,57 @@ describe("Credlink Contract Tests", function () {
       expect(afterOnboard).to.be.at.least(beforeOnboard);
     });
   });
+
+  describe("Input Validation and Sanitization", function () {
+    it("Should handle special characters in borrower name", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "John O'Brien-Smith",
+        "john@example.com",
+        "+1234567890",
+        "O'Brien Corp",
+        "USA"
+      );
+      
+      const details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.name).to.equal("John O'Brien-Smith");
+    });
+
+    it("Should handle long email addresses", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      const longEmail = "very.long.email.address.for.testing.purposes@example-domain.com";
+      await credlink.connect(borrower).onboardBorrower(
+        "Long Email Test",
+        longEmail,
+        "+1234567890",
+        "Email Corp",
+        "USA"
+      );
+      
+      const details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.email).to.equal(longEmail);
+    });
+
+    it("Should handle long KYC details", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Long KYC",
+        "longkyc@example.com",
+        "+1234567890",
+        "KYC Corp",
+        "USA"
+      );
+      
+      const longKYC = "This is a very long KYC detail string that contains multiple pieces of information including passport number, address verification, and other compliance data for testing purposes.";
+      
+      await credlink.connect(borrower).borrowerKYC(longKYC);
+      
+      const details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.kycDetails).to.equal(longKYC);
+    });
+  });
 });
 
