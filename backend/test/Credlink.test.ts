@@ -1711,5 +1711,53 @@ describe("Credlink Contract Tests", function () {
       expect(history2.length).to.equal(1);
     });
   });
+
+  describe("Data Isolation and Security", function () {
+    it("Should isolate borrower data between different borrowers", async function () {
+      const { credlink, borrower, otherAccount } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Isolated Borrower 1",
+        "isolated1@example.com",
+        "+1111111111",
+        "Isolated Corp 1",
+        "USA"
+      );
+      
+      await credlink.connect(otherAccount).onboardBorrower(
+        "Isolated Borrower 2",
+        "isolated2@example.com",
+        "+2222222222",
+        "Isolated Corp 2",
+        "UK"
+      );
+      
+      const details1 = await credlink.getBorrowerDetails(borrower.address);
+      const details2 = await credlink.getBorrowerDetails(otherAccount.address);
+      
+      expect(details1.name).to.equal("Isolated Borrower 1");
+      expect(details2.name).to.equal("Isolated Borrower 2");
+      expect(details1.name).to.not.equal(details2.name);
+    });
+
+    it("Should prevent unauthorized access to borrower history", async function () {
+      const { credlink, usdt, borrower, otherAccount, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("500"),
+        30,
+        "Private loan"
+      );
+      
+      // Other account should see empty history
+      const otherHistory = await credlink.connect(otherAccount).viewBorrowerHistory();
+      expect(otherHistory.length).to.equal(0);
+      
+      // Borrower should see their own history
+      const borrowerHistory = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(borrowerHistory.length).to.equal(1);
+    });
+  });
 });
 
