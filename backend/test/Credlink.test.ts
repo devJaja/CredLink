@@ -2005,5 +2005,94 @@ describe("Credlink Contract Tests", function () {
       expect(borrowerHistory.length).to.equal(1);
     });
   });
+
+  describe("Final Edge Cases and Corner Cases", function () {
+    it("Should handle minimum valid values for all parameters", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      // Minimum interest rate
+      const minLiquidity = hre.ethers.parseEther("1");
+      await usdt.approve(await credlink.getAddress(), minLiquidity);
+      await credlink.connect(lender).onboardLender(minLiquidity, 1, 1);
+      
+      // Minimum borrow
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("0.1"),
+        1,
+        "Min values"
+      );
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(1);
+    });
+
+    it("Should handle maximum practical values", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      // Maximum interest rate
+      const maxLiquidity = hre.ethers.parseEther("1000000");
+      await usdt.approve(await credlink.getAddress(), maxLiquidity);
+      await credlink.connect(lender).onboardLender(maxLiquidity, 30, 3650);
+      
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const maxBorrow = hre.ethers.parseEther("500000");
+      await credlink.connect(borrower).borrowFunds(
+        maxBorrow,
+        3650,
+        "Max values test"
+      );
+      
+      const borrowerBalance = await usdt.balanceOf(borrower.address);
+      expect(borrowerBalance).to.equal(maxBorrow);
+    });
+
+    it("Should handle empty string purpose in borrowFunds", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("100"),
+        30,
+        ""
+      );
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history[0].borrowPurpose).to.equal("");
+    });
+
+    it("Should verify contract handles all operations in sequence correctly", async function () {
+      const { credlink, usdt, lender, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      // Complete sequence: lender -> borrower -> KYC -> borrow
+      const liquidity = hre.ethers.parseEther("10000");
+      await usdt.approve(await credlink.getAddress(), liquidity);
+      await credlink.connect(lender).onboardLender(liquidity, 10, 30);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Sequence Test",
+        "sequence@example.com",
+        "+1234567890",
+        "Sequence Corp",
+        "USA"
+      );
+      
+      await credlink.connect(borrower).borrowerKYC("Sequence KYC");
+      
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("2000"),
+        30,
+        "Sequence loan"
+      );
+      
+      // Verify final state
+      const details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.isVerified).to.equal(true);
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(1);
+    });
+  });
 });
 
