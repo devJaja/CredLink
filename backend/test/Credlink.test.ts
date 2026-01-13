@@ -1639,5 +1639,77 @@ describe("Credlink Contract Tests", function () {
       expect(ethBalance).to.equal(ethAmount);
     });
   });
+
+  describe("Comprehensive Integration Workflows", function () {
+    it("Should handle complete lending and borrowing cycle", async function () {
+      const { credlink, usdt, lender, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      // Lender provides liquidity
+      const liquidity = hre.ethers.parseEther("10000");
+      await usdt.approve(await credlink.getAddress(), liquidity);
+      await credlink.connect(lender).onboardLender(liquidity, 12, 60);
+      
+      // Borrower completes onboarding
+      await credlink.connect(borrower).onboardBorrower(
+        "Cycle Test",
+        "cycle@example.com",
+        "+5555555555",
+        "Cycle Corp",
+        "USA"
+      );
+      await credlink.connect(borrower).borrowerKYC("Cycle KYC");
+      
+      // Borrower borrows
+      const borrowAmount = hre.ethers.parseEther("3000");
+      await credlink.connect(borrower).borrowFunds(borrowAmount, 90, "Cycle loan");
+      
+      // Verify complete cycle
+      const borrowerBalance = await usdt.balanceOf(borrower.address);
+      expect(borrowerBalance).to.equal(borrowAmount);
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(1);
+    });
+
+    it("Should handle multiple borrowers with single lender", async function () {
+      const { credlink, usdt, borrower, otherAccount, lender } = await loadFixture(deployCredlinkFixture);
+      
+      // Single lender provides large liquidity
+      const largeLiquidity = hre.ethers.parseEther("50000");
+      await usdt.approve(await credlink.getAddress(), largeLiquidity);
+      await credlink.connect(lender).onboardLender(largeLiquidity, 10, 30);
+      
+      // Setup multiple borrowers
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      await credlink.connect(otherAccount).onboardBorrower(
+        "Multi Borrower",
+        "multi@example.com",
+        "+6666666666",
+        "Multi Corp",
+        "UK"
+      );
+      await credlink.connect(otherAccount).borrowerKYC("Multi KYC");
+      
+      // Both borrow
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("5000"),
+        30,
+        "Loan 1"
+      );
+      
+      await credlink.connect(otherAccount).borrowFunds(
+        hre.ethers.parseEther("7000"),
+        60,
+        "Loan 2"
+      );
+      
+      const history1 = await credlink.connect(borrower).viewBorrowerHistory();
+      const history2 = await credlink.connect(otherAccount).viewBorrowerHistory();
+      
+      expect(history1.length).to.equal(1);
+      expect(history2.length).to.equal(1);
+    });
+  });
 });
 
