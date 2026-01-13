@@ -1806,5 +1806,97 @@ describe("Credlink Contract Tests", function () {
       expect(contractBalance).to.equal(expectedTotal);
     });
   });
+
+  describe("Final Comprehensive Scenario Tests", function () {
+    it("Should handle complex multi-user scenario with all operations", async function () {
+      const { credlink, usdt, lender, borrower, otherAccount } = await loadFixture(deployCredlinkFixture);
+      
+      // Multiple lenders provide liquidity
+      const tokenLiquidity = hre.ethers.parseEther("20000");
+      await usdt.approve(await credlink.getAddress(), tokenLiquidity);
+      await credlink.connect(lender).onboardLender(tokenLiquidity, 10, 30);
+      
+      await credlink.connect(otherAccount).lendFunds({ value: hre.ethers.parseEther("5.0") });
+      
+      // Multiple borrowers onboard
+      await credlink.connect(borrower).onboardBorrower(
+        "Complex Borrower 1",
+        "complex1@example.com",
+        "+7777777777",
+        "Complex Corp 1",
+        "USA"
+      );
+      await credlink.connect(borrower).borrowerKYC("Complex KYC 1");
+      
+      await credlink.connect(otherAccount).onboardBorrower(
+        "Complex Borrower 2",
+        "complex2@example.com",
+        "+8888888888",
+        "Complex Corp 2",
+        "UK"
+      );
+      await credlink.connect(otherAccount).borrowerKYC("Complex KYC 2");
+      
+      // Both borrowers borrow
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("3000"),
+        30,
+        "Complex loan 1"
+      );
+      
+      await credlink.connect(otherAccount).borrowFunds(
+        hre.ethers.parseEther("4000"),
+        60,
+        "Complex loan 2"
+      );
+      
+      // Verify final state
+      const history1 = await credlink.connect(borrower).viewBorrowerHistory();
+      const history2 = await credlink.connect(otherAccount).viewBorrowerHistory();
+      
+      expect(history1.length).to.equal(1);
+      expect(history2.length).to.equal(1);
+      
+      const contractTokenBalance = await usdt.balanceOf(await credlink.getAddress());
+      const expectedTokenBalance = tokenLiquidity - hre.ethers.parseEther("3000") - hre.ethers.parseEther("4000");
+      expect(contractTokenBalance).to.equal(expectedTokenBalance);
+    });
+
+    it("Should maintain data integrity across all contract operations", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      // Complete workflow
+      await credlink.connect(borrower).onboardBorrower(
+        "Integrity Test",
+        "integrity@example.com",
+        "+9999999999",
+        "Integrity Corp",
+        "USA"
+      );
+      
+      let details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.name).to.equal("Integrity Test");
+      expect(details.isVerified).to.equal(false);
+      
+      await credlink.connect(borrower).borrowerKYC("Integrity KYC");
+      details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.isVerified).to.equal(true);
+      
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("1000"),
+        30,
+        "Integrity loan"
+      );
+      
+      // Verify all data persists
+      details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.name).to.equal("Integrity Test");
+      expect(details.isVerified).to.equal(true);
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(1);
+    });
+  });
 });
 
