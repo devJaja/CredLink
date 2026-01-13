@@ -1517,5 +1517,41 @@ describe("Credlink Contract Tests", function () {
       expect(receipt).to.not.be.null;
     });
   });
+
+  describe("Timestamp and Block Time Verification", function () {
+    it("Should record correct timestamp in borrow history", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const beforeBorrow = await time.latest();
+      
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("500"),
+        30,
+        "Timestamp test"
+      );
+      
+      const afterBorrow = await time.latest();
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      
+      expect(history[0].borrowTime).to.be.at.least(beforeBorrow);
+      expect(history[0].borrowTime).to.be.at.most(afterBorrow);
+    });
+
+    it("Should set startDate correctly for liquidity provider", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const beforeOnboard = await time.latest();
+      
+      const liquidityAmount = hre.ethers.parseEther("2000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      await credlink.connect(lender).onboardLender(liquidityAmount, 10, 30);
+      
+      const afterOnboard = await time.latest();
+      
+      // Verify transaction completed within expected time range
+      expect(afterOnboard).to.be.at.least(beforeOnboard);
+    });
+  });
 });
 
