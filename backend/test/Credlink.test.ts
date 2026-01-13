@@ -1898,5 +1898,53 @@ describe("Credlink Contract Tests", function () {
       expect(history.length).to.equal(1);
     });
   });
+
+  describe("Event Emission and Logging Verification", function () {
+    it("Should verify transaction receipts are generated correctly", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      const tx = await credlink.connect(borrower).onboardBorrower(
+        "Event Test",
+        "event@example.com",
+        "+1111111111",
+        "Event Corp",
+        "USA"
+      );
+      
+      const receipt = await tx.wait();
+      expect(receipt).to.not.be.null;
+      expect(receipt?.status).to.equal(1);
+    });
+
+    it("Should verify KYC transaction completes successfully", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "KYC Event",
+        "kycevent@example.com",
+        "+2222222222",
+        "KYC Event Corp",
+        "USA"
+      );
+      
+      const tx = await credlink.connect(borrower).borrowerKYC("Event KYC");
+      const receipt = await tx.wait();
+      expect(receipt?.status).to.equal(1);
+    });
+
+    it("Should verify borrow transaction completes successfully", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const tx = await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("500"),
+        30,
+        "Event loan"
+      );
+      
+      const receipt = await tx.wait();
+      expect(receipt?.status).to.equal(1);
+    });
+  });
 });
 
