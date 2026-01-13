@@ -1759,5 +1759,52 @@ describe("Credlink Contract Tests", function () {
       expect(borrowerHistory.length).to.equal(1);
     });
   });
+
+  describe("Stress Tests for Multiple Operations", function () {
+    it("Should handle rapid sequential borrows from same borrower", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      // Setup large liquidity
+      const largeLiquidity = hre.ethers.parseEther("100000");
+      await usdt.approve(await credlink.getAddress(), largeLiquidity);
+      await credlink.connect(lender).onboardLender(largeLiquidity, 10, 30);
+      
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      // Rapid sequential borrows
+      for (let i = 0; i < 5; i++) {
+        await credlink.connect(borrower).borrowFunds(
+          hre.ethers.parseEther("1000"),
+          30,
+          `Rapid loan ${i + 1}`
+        );
+      }
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(5);
+    });
+
+    it("Should handle multiple lenders onboarding simultaneously", async function () {
+      const { credlink, usdt, lender, borrower, otherAccount } = await loadFixture(deployCredlinkFixture);
+      
+      const amounts = [
+        hre.ethers.parseEther("2000"),
+        hre.ethers.parseEther("3000"),
+        hre.ethers.parseEther("4000")
+      ];
+      
+      await usdt.approve(await credlink.getAddress(), amounts[0]);
+      await usdt.approve(await credlink.getAddress(), amounts[1]);
+      await usdt.approve(await credlink.getAddress(), amounts[2]);
+      
+      await credlink.connect(lender).onboardLender(amounts[0], 10, 30);
+      await credlink.connect(borrower).onboardLender(amounts[1], 12, 45);
+      await credlink.connect(otherAccount).onboardLender(amounts[2], 15, 60);
+      
+      const contractBalance = await usdt.balanceOf(await credlink.getAddress());
+      const expectedTotal = amounts[0] + amounts[1] + amounts[2];
+      expect(contractBalance).to.equal(expectedTotal);
+    });
+  });
 });
 
