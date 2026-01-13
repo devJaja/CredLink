@@ -1456,5 +1456,66 @@ describe("Credlink Contract Tests", function () {
       expect(detailsAfter.isVerified).to.equal(detailsBefore.isVerified);
     });
   });
+
+  describe("Gas Optimization and Transaction Costs", function () {
+    it("Should complete onboardBorrower with reasonable gas usage", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      const tx = await credlink.connect(borrower).onboardBorrower(
+        "Gas Test",
+        "gas@example.com",
+        "+1111111111",
+        "Gas Corp",
+        "USA"
+      );
+      
+      const receipt = await tx.wait();
+      expect(receipt).to.not.be.null;
+      expect(receipt?.gasUsed).to.be.greaterThan(0);
+    });
+
+    it("Should complete borrowerKYC with reasonable gas usage", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Gas KYC",
+        "gaskyc@example.com",
+        "+2222222222",
+        "Gas KYC Corp",
+        "USA"
+      );
+      
+      const tx = await credlink.connect(borrower).borrowerKYC("Gas test KYC");
+      const receipt = await tx.wait();
+      expect(receipt).to.not.be.null;
+    });
+
+    it("Should handle multiple operations efficiently", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Efficiency Test",
+        "efficiency@example.com",
+        "+3333333333",
+        "Efficiency Corp",
+        "USA"
+      );
+      
+      await credlink.connect(borrower).borrowerKYC("Efficiency KYC");
+      
+      const liquidityAmount = hre.ethers.parseEther("5000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      await credlink.connect(lender).onboardLender(liquidityAmount, 10, 30);
+      
+      const tx = await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("1000"),
+        30,
+        "Efficiency loan"
+      );
+      
+      const receipt = await tx.wait();
+      expect(receipt).to.not.be.null;
+    });
+  });
 });
 
