@@ -2407,5 +2407,49 @@ describe("Credlink Contract Tests", function () {
       expect(contractBalance).to.equal(0);
     });
   });
+
+  describe("Multi-Asset Liquidity Tests", function () {
+    it("Should handle both token and ETH liquidity simultaneously", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const tokenAmount = hre.ethers.parseEther("5000");
+      const ethAmount = hre.ethers.parseEther("3.0");
+      
+      await usdt.approve(await credlink.getAddress(), tokenAmount);
+      await credlink.connect(lender).onboardLender(tokenAmount, 10, 30);
+      await credlink.connect(lender).lendFunds({ value: ethAmount });
+      
+      const tokenBalance = await usdt.balanceOf(await credlink.getAddress());
+      const ethBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
+      
+      expect(tokenBalance).to.equal(tokenAmount);
+      expect(ethBalance).to.equal(ethAmount);
+    });
+
+    it("Should allow borrowing tokens while ETH liquidity exists", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      // Provide both types of liquidity
+      const tokenAmount = hre.ethers.parseEther("10000");
+      await usdt.approve(await credlink.getAddress(), tokenAmount);
+      await credlink.connect(lender).onboardLender(tokenAmount, 10, 30);
+      await credlink.connect(lender).lendFunds({ value: hre.ethers.parseEther("5.0") });
+      
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      // Borrow tokens
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("3000"),
+        30,
+        "Multi-asset test"
+      );
+      
+      const tokenBalance = await usdt.balanceOf(await credlink.getAddress());
+      const ethBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
+      
+      expect(tokenBalance).to.equal(tokenAmount - hre.ethers.parseEther("3000"));
+      expect(ethBalance).to.equal(hre.ethers.parseEther("5.0"));
+    });
+  });
 });
 
