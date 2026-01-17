@@ -2658,5 +2658,63 @@ describe("Credlink Contract Tests", function () {
       expect(history.length).to.equal(1);
     });
   });
+
+  describe("Batch Operation Tests", function () {
+    it("Should handle batch borrower onboarding", async function () {
+      const { credlink, borrower, otherAccount } = await loadFixture(deployCredlinkFixture);
+      
+      // Batch onboard multiple borrowers
+      await credlink.connect(borrower).onboardBorrower(
+        "Batch Borrower 1",
+        "batch1@example.com",
+        "+3333333333",
+        "Batch Corp 1",
+        "USA"
+      );
+      
+      await credlink.connect(otherAccount).onboardBorrower(
+        "Batch Borrower 2",
+        "batch2@example.com",
+        "+4444444444",
+        "Batch Corp 2",
+        "UK"
+      );
+      
+      const details1 = await credlink.getBorrowerDetails(borrower.address);
+      const details2 = await credlink.getBorrowerDetails(otherAccount.address);
+      
+      expect(details1.name).to.equal("Batch Borrower 1");
+      expect(details2.name).to.equal("Batch Borrower 2");
+    });
+
+    it("Should handle batch KYC verification", async function () {
+      const { credlink, borrower, otherAccount } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Batch KYC 1",
+        "batchkyc1@example.com",
+        "+5555555555",
+        "Batch KYC Corp 1",
+        "USA"
+      );
+      
+      await credlink.connect(otherAccount).onboardBorrower(
+        "Batch KYC 2",
+        "batchkyc2@example.com",
+        "+6666666666",
+        "Batch KYC Corp 2",
+        "UK"
+      );
+      
+      await credlink.connect(borrower).borrowerKYC("Batch KYC 1");
+      await credlink.connect(otherAccount).borrowerKYC("Batch KYC 2");
+      
+      const details1 = await credlink.getBorrowerDetails(borrower.address);
+      const details2 = await credlink.getBorrowerDetails(otherAccount.address);
+      
+      expect(details1.isVerified).to.equal(true);
+      expect(details2.isVerified).to.equal(true);
+    });
+  });
 });
 
