@@ -2503,5 +2503,108 @@ describe("Credlink Contract Tests", function () {
       expect(details.isVerified).to.equal(true);
     });
   });
+
+  describe("Final System Integration and Validation", function () {
+    it("Should validate complete system with all components", async function () {
+      const { credlink, usdt, lender, borrower, otherAccount } = await loadFixture(deployCredlinkFixture);
+      
+      // Multiple lenders
+      const tokenLiquidity = hre.ethers.parseEther("20000");
+      await usdt.approve(await credlink.getAddress(), tokenLiquidity);
+      await credlink.connect(lender).onboardLender(tokenLiquidity, 10, 30);
+      
+      await credlink.connect(otherAccount).lendFunds({ value: hre.ethers.parseEther("10.0") });
+      
+      // Multiple borrowers
+      await credlink.connect(borrower).onboardBorrower(
+        "System Test 1",
+        "system1@example.com",
+        "+5555555555",
+        "System Corp 1",
+        "USA"
+      );
+      await credlink.connect(borrower).borrowerKYC("System KYC 1");
+      
+      await credlink.connect(otherAccount).onboardBorrower(
+        "System Test 2",
+        "system2@example.com",
+        "+6666666666",
+        "System Corp 2",
+        "UK"
+      );
+      await credlink.connect(otherAccount).borrowerKYC("System KYC 2");
+      
+      // Both borrow
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("5000"),
+        30,
+        "System loan 1"
+      );
+      
+      await credlink.connect(otherAccount).borrowFunds(
+        hre.ethers.parseEther("7000"),
+        60,
+        "System loan 2"
+      );
+      
+      // Final validation
+      const history1 = await credlink.connect(borrower).viewBorrowerHistory();
+      const history2 = await credlink.connect(otherAccount).viewBorrowerHistory();
+      
+      expect(history1.length).to.equal(1);
+      expect(history2.length).to.equal(1);
+      
+      const tokenBalance = await usdt.balanceOf(await credlink.getAddress());
+      const expectedTokenBalance = tokenLiquidity - hre.ethers.parseEther("5000") - hre.ethers.parseEther("7000");
+      expect(tokenBalance).to.equal(expectedTokenBalance);
+      
+      const ethBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
+      expect(ethBalance).to.equal(hre.ethers.parseEther("10.0"));
+    });
+
+    it("Should maintain data integrity in complex scenarios", async function () {
+      const { credlink, usdt, lender, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      // Complete workflow with multiple operations
+      const liquidity = hre.ethers.parseEther("15000");
+      await usdt.approve(await credlink.getAddress(), liquidity);
+      await credlink.connect(lender).onboardLender(liquidity, 12, 60);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Integrity Final",
+        "integrity@example.com",
+        "+7777777777",
+        "Integrity Corp",
+        "USA"
+      );
+      
+      await credlink.connect(borrower).borrowerKYC("Integrity KYC");
+      
+      // Multiple borrows
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("2000"),
+        30,
+        "Integrity loan 1"
+      );
+      
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("3000"),
+        60,
+        "Integrity loan 2"
+      );
+      
+      // Verify all data
+      const details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.isVerified).to.equal(true);
+      expect(details.name).to.equal("Integrity Final");
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(2);
+      
+      const contractBalance = await usdt.balanceOf(await credlink.getAddress());
+      const expectedBalance = liquidity - hre.ethers.parseEther("2000") - hre.ethers.parseEther("3000");
+      expect(contractBalance).to.equal(expectedBalance);
+    });
+  });
 });
 
