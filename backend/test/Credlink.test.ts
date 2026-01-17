@@ -2184,5 +2184,42 @@ describe("Credlink Contract Tests", function () {
       expect(details.isVerified).to.equal(true);
     });
   });
+
+  describe("Liquidity Pool Mapping", function () {
+    it("Should handle multiple liquidity providers independently", async function () {
+      const { credlink, usdt, lender, borrower, otherAccount } = await loadFixture(deployCredlinkFixture);
+      
+      const amount1 = hre.ethers.parseEther("3000");
+      const amount2 = hre.ethers.parseEther("4000");
+      
+      await usdt.approve(await credlink.getAddress(), amount1);
+      await usdt.approve(await credlink.getAddress(), amount2);
+      
+      await credlink.connect(lender).onboardLender(amount1, 10, 30);
+      await credlink.connect(borrower).onboardLender(amount2, 12, 45);
+      
+      const contractBalance = await usdt.balanceOf(await credlink.getAddress());
+      expect(contractBalance).to.equal(amount1 + amount2);
+    });
+
+    it("Should maintain separate liquidity provider records", async function () {
+      const { credlink, usdt, lender, otherAccount } = await loadFixture(deployCredlinkFixture);
+      
+      await usdt.approve(await credlink.getAddress(), hre.ethers.parseEther("2000"));
+      await credlink.connect(lender).onboardLender(
+        hre.ethers.parseEther("2000"),
+        10,
+        30
+      );
+      
+      await credlink.connect(otherAccount).lendFunds({ value: hre.ethers.parseEther("1.0") });
+      
+      const contractTokenBalance = await usdt.balanceOf(await credlink.getAddress());
+      const contractEthBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
+      
+      expect(contractTokenBalance).to.equal(hre.ethers.parseEther("2000"));
+      expect(contractEthBalance).to.equal(hre.ethers.parseEther("1.0"));
+    });
+  });
 });
 
