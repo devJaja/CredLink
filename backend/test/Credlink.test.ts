@@ -2221,5 +2221,45 @@ describe("Credlink Contract Tests", function () {
       expect(contractEthBalance).to.equal(hre.ethers.parseEther("1.0"));
     });
   });
+
+  describe("Time Lock Verification", function () {
+    it("Should accept various time lock periods", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const timeLocks = [1, 30, 60, 90, 365];
+      
+      for (const timeLock of timeLocks) {
+        const liquidityAmount = hre.ethers.parseEther("1000");
+        await usdt.approve(await credlink.getAddress(), liquidityAmount);
+        
+        await expect(
+          credlink.connect(lender).onboardLender(liquidityAmount, 10, timeLock)
+        ).to.not.be.reverted;
+      }
+    });
+
+    it("Should handle zero time lock period", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("1000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      
+      await expect(
+        credlink.connect(lender).onboardLender(liquidityAmount, 10, 0)
+      ).to.not.be.reverted;
+    });
+
+    it("Should handle very long time lock periods", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("1000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      
+      const longTimeLock = 3650; // 10 years
+      await expect(
+        credlink.connect(lender).onboardLender(liquidityAmount, 10, longTimeLock)
+      ).to.not.be.reverted;
+    });
+  });
 });
 
