@@ -2094,5 +2094,34 @@ describe("Credlink Contract Tests", function () {
       expect(history.length).to.equal(1);
     });
   });
+
+  describe("Contract Initialization and Constructor", function () {
+    it("Should deploy contract with correct token address", async function () {
+      const { credlink, usdt } = await loadFixture(deployCredlinkFixture);
+      
+      const contractAddress = await credlink.getAddress();
+      expect(contractAddress).to.not.equal(hre.ethers.ZeroAddress);
+      
+      // Verify contract is deployed
+      const code = await hre.ethers.provider.getCode(contractAddress);
+      expect(code).to.not.equal("0x");
+    });
+
+    it("Should initialize with zero balance for tokens", async function () {
+      const { credlink, usdt } = await loadFixture(deployCredlinkFixture);
+      
+      const contractAddress = await credlink.getAddress();
+      const initialBalance = await usdt.balanceOf(contractAddress);
+      expect(initialBalance).to.equal(0);
+    });
+
+    it("Should initialize with zero ETH balance", async function () {
+      const { credlink } = await loadFixture(deployCredlinkFixture);
+      
+      const contractAddress = await credlink.getAddress();
+      const initialBalance = await hre.ethers.provider.getBalance(contractAddress);
+      expect(initialBalance).to.equal(0);
+    });
+  });
 });
 
