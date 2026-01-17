@@ -2763,5 +2763,66 @@ describe("Credlink Contract Tests", function () {
       expect(duration).to.be.lessThan(30000); // Should complete in reasonable time
     });
   });
+
+  describe("Cross-Function Interaction Tests", function () {
+    it("Should handle lender onboarding followed by borrower operations", async function () {
+      const { credlink, usdt, lender, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      // Lender provides liquidity first
+      const liquidity = hre.ethers.parseEther("8000");
+      await usdt.approve(await credlink.getAddress(), liquidity);
+      await credlink.connect(lender).onboardLender(liquidity, 10, 30);
+      
+      // Then borrower operations
+      await credlink.connect(borrower).onboardBorrower(
+        "Cross Function",
+        "cross@example.com",
+        "+8888888888",
+        "Cross Corp",
+        "USA"
+      );
+      
+      await credlink.connect(borrower).borrowerKYC("Cross KYC");
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("2000"),
+        30,
+        "Cross loan"
+      );
+      
+      // Verify both operations succeeded
+      const contractBalance = await usdt.balanceOf(await credlink.getAddress());
+      expect(contractBalance).to.equal(liquidity - hre.ethers.parseEther("2000"));
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(1);
+    });
+
+    it("Should handle ETH deposits alongside token operations", async function () {
+      const { credlink, usdt, lender, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      // Token liquidity
+      const tokenAmount = hre.ethers.parseEther("5000");
+      await usdt.approve(await credlink.getAddress(), tokenAmount);
+      await credlink.connect(lender).onboardLender(tokenAmount, 10, 30);
+      
+      // ETH liquidity
+      await credlink.connect(lender).lendFunds({ value: hre.ethers.parseEther("2.0") });
+      
+      // Borrower operations
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("1500"),
+        30,
+        "Cross asset loan"
+      );
+      
+      // Verify both assets maintained
+      const tokenBalance = await usdt.balanceOf(await credlink.getAddress());
+      const ethBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
+      
+      expect(tokenBalance).to.equal(tokenAmount - hre.ethers.parseEther("1500"));
+      expect(ethBalance).to.equal(hre.ethers.parseEther("2.0"));
+    });
+  });
 });
 
