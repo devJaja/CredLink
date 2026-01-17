@@ -2716,5 +2716,52 @@ describe("Credlink Contract Tests", function () {
       expect(details2.isVerified).to.equal(true);
     });
   });
+
+  describe("Performance Benchmarking Tests", function () {
+    it("Should complete onboardBorrower operation efficiently", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      const startTime = Date.now();
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Performance Test",
+        "performance@example.com",
+        "+7777777777",
+        "Performance Corp",
+        "USA"
+      );
+      
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      // Verify operation completed
+      const details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.name).to.equal("Performance Test");
+      expect(duration).to.be.lessThan(10000); // Should complete in reasonable time
+    });
+
+    it("Should handle multiple rapid operations efficiently", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const startTime = Date.now();
+      
+      // Multiple rapid borrows
+      for (let i = 0; i < 3; i++) {
+        await credlink.connect(borrower).borrowFunds(
+          hre.ethers.parseEther("100"),
+          30,
+          `Performance loan ${i + 1}`
+        );
+      }
+      
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(3);
+      expect(duration).to.be.lessThan(30000); // Should complete in reasonable time
+    });
+  });
 });
 
