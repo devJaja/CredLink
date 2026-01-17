@@ -2324,5 +2324,47 @@ describe("Credlink Contract Tests", function () {
       expect(contractBalance).to.equal(hre.ethers.parseEther("3.0"));
     });
   });
+
+  describe("Borrower Verification Workflow", function () {
+    it("Should enforce verification requirement before borrowing", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      // Onboard but don't verify
+      await credlink.connect(borrower).onboardBorrower(
+        "Unverified",
+        "unverified@example.com",
+        "+1111111111",
+        "Unverified Corp",
+        "USA"
+      );
+      
+      // Setup liquidity
+      const liquidityAmount = hre.ethers.parseEther("5000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      await credlink.connect(lender).onboardLender(liquidityAmount, 10, 30);
+      
+      // Should fail to borrow
+      await expect(
+        credlink.connect(borrower).borrowFunds(
+          hre.ethers.parseEther("100"),
+          30,
+          "Should fail"
+        )
+      ).to.be.revertedWith("Unverified users cannot borrow");
+    });
+
+    it("Should allow borrowing after successful verification", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      await expect(
+        credlink.connect(borrower).borrowFunds(
+          hre.ethers.parseEther("500"),
+          30,
+          "Should succeed"
+        )
+      ).to.not.be.reverted;
+    });
+  });
 });
 
