@@ -2366,5 +2366,46 @@ describe("Credlink Contract Tests", function () {
       ).to.not.be.reverted;
     });
   });
+
+  describe("Contract Balance Edge Cases", function () {
+    it("Should handle contract with zero balance gracefully", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      // Try to borrow from empty contract
+      await credlink.connect(borrower).onboardBorrower(
+        "Zero Balance",
+        "zerobalance@example.com",
+        "+2222222222",
+        "Zero Corp",
+        "USA"
+      );
+      await credlink.connect(borrower).borrowerKYC("Zero KYC");
+      
+      // Should fail due to insufficient balance
+      await expect(
+        credlink.connect(borrower).borrowFunds(
+          hre.ethers.parseEther("100"),
+          30,
+          "Zero test"
+        )
+      ).to.be.reverted;
+    });
+
+    it("Should handle exact balance borrows", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const exactAmount = hre.ethers.parseEther("1000");
+      await usdt.approve(await credlink.getAddress(), exactAmount);
+      await credlink.connect(lender).onboardLender(exactAmount, 10, 30);
+      
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      // Borrow exact amount
+      await credlink.connect(borrower).borrowFunds(exactAmount, 30, "Exact amount");
+      
+      const contractBalance = await usdt.balanceOf(await credlink.getAddress());
+      expect(contractBalance).to.equal(0);
+    });
+  });
 });
 
