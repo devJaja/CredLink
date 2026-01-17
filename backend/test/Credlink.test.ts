@@ -2123,5 +2123,34 @@ describe("Credlink Contract Tests", function () {
       expect(initialBalance).to.equal(0);
     });
   });
+
+  describe("Token Address Verification", function () {
+    it("Should use correct token address for transfers", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("1000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      
+      const lenderBalanceBefore = await usdt.balanceOf(lender.address);
+      
+      await credlink.connect(lender).onboardLender(liquidityAmount, 10, 30);
+      
+      const lenderBalanceAfter = await usdt.balanceOf(lender.address);
+      expect(lenderBalanceAfter).to.equal(lenderBalanceBefore - liquidityAmount);
+    });
+
+    it("Should transfer tokens to borrower using correct token address", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      const borrowAmount = hre.ethers.parseEther("500");
+      const borrowerBalanceBefore = await usdt.balanceOf(borrower.address);
+      
+      await credlink.connect(borrower).borrowFunds(borrowAmount, 30, "Token test");
+      
+      const borrowerBalanceAfter = await usdt.balanceOf(borrower.address);
+      expect(borrowerBalanceAfter).to.equal(borrowerBalanceBefore + borrowAmount);
+    });
+  });
 });
 
