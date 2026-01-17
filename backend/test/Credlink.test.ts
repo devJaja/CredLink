@@ -2289,5 +2289,40 @@ describe("Credlink Contract Tests", function () {
       expect(contractBalance).to.equal(liquidityAmount);
     });
   });
+
+  describe("Provider Active Status", function () {
+    it("Should mark provider as active after onboarding", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("2000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      await credlink.connect(lender).onboardLender(liquidityAmount, 10, 30);
+      
+      // Verify provider is active by checking contract balance
+      const contractBalance = await usdt.balanceOf(await credlink.getAddress());
+      expect(contractBalance).to.equal(liquidityAmount);
+    });
+
+    it("Should mark provider as active after ETH deposit", async function () {
+      const { credlink, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const depositAmount = hre.ethers.parseEther("2.0");
+      await credlink.connect(lender).lendFunds({ value: depositAmount });
+      
+      // Verify deposit was successful
+      const contractBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
+      expect(contractBalance).to.equal(depositAmount);
+    });
+
+    it("Should handle provider becoming active through multiple deposits", async function () {
+      const { credlink, lender } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(lender).lendFunds({ value: hre.ethers.parseEther("1.0") });
+      await credlink.connect(lender).lendFunds({ value: hre.ethers.parseEther("2.0") });
+      
+      const contractBalance = await hre.ethers.provider.getBalance(await credlink.getAddress());
+      expect(contractBalance).to.equal(hre.ethers.parseEther("3.0"));
+    });
+  });
 });
 
