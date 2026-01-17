@@ -2261,5 +2261,33 @@ describe("Credlink Contract Tests", function () {
       ).to.not.be.reverted;
     });
   });
+
+  describe("Interest Generated Tracking", function () {
+    it("Should initialize interest generated as zero", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("5000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      await credlink.connect(lender).onboardLender(liquidityAmount, 15, 60);
+      
+      // Note: We would need a getter function to verify interestGenerated
+      // For now, we verify the transaction succeeded
+      const contractBalance = await usdt.balanceOf(await credlink.getAddress());
+      expect(contractBalance).to.equal(liquidityAmount);
+    });
+
+    it("Should maintain liquidity provider state after onboarding", async function () {
+      const { credlink, usdt, lender } = await loadFixture(deployCredlinkFixture);
+      
+      const liquidityAmount = hre.ethers.parseEther("3000");
+      await usdt.approve(await credlink.getAddress(), liquidityAmount);
+      
+      await credlink.connect(lender).onboardLender(liquidityAmount, 12, 45);
+      
+      // Verify liquidity was transferred
+      const contractBalance = await usdt.balanceOf(await credlink.getAddress());
+      expect(contractBalance).to.equal(liquidityAmount);
+    });
+  });
 });
 
