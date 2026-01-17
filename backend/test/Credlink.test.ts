@@ -2451,5 +2451,57 @@ describe("Credlink Contract Tests", function () {
       expect(ethBalance).to.equal(hre.ethers.parseEther("5.0"));
     });
   });
+
+  describe("Comprehensive State Transition Tests", function () {
+    it("Should track state transitions from unverified to verified", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "State Transition",
+        "state@example.com",
+        "+3333333333",
+        "State Corp",
+        "USA"
+      );
+      
+      let details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.isVerified).to.equal(false);
+      expect(details.kycDetails).to.equal("");
+      
+      await credlink.connect(borrower).borrowerKYC("State KYC");
+      
+      details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.isVerified).to.equal(true);
+      expect(details.kycDetails).to.equal("State KYC");
+    });
+
+    it("Should maintain history across state transitions", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "History State",
+        "history@example.com",
+        "+4444444444",
+        "History Corp",
+        "USA"
+      );
+      
+      await credlink.connect(borrower).borrowerKYC("History KYC");
+      
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("500"),
+        30,
+        "History loan"
+      );
+      
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(1);
+      
+      const details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.isVerified).to.equal(true);
+    });
+  });
 });
 
