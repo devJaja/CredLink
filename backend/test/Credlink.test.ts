@@ -2152,5 +2152,37 @@ describe("Credlink Contract Tests", function () {
       expect(borrowerBalanceAfter).to.equal(borrowerBalanceBefore + borrowAmount);
     });
   });
+
+  describe("Borrower Amount Tracking", function () {
+    it("Should initialize borrower with zero borrowed amount", async function () {
+      const { credlink, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Amount Test",
+        "amount@example.com",
+        "+1111111111",
+        "Amount Corp",
+        "USA"
+      );
+      
+      const details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.borrowedAmount).to.equal(0);
+    });
+
+    it("Should maintain borrower details after borrowing", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      await setupVerifiedBorrower(credlink, usdt, borrower, lender);
+      
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("1000"),
+        30,
+        "Amount tracking test"
+      );
+      
+      const details = await credlink.getBorrowerDetails(borrower.address);
+      expect(details.name).to.not.equal("");
+      expect(details.isVerified).to.equal(true);
+    });
+  });
 });
 
