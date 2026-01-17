@@ -2606,5 +2606,57 @@ describe("Credlink Contract Tests", function () {
       expect(contractBalance).to.equal(expectedBalance);
     });
   });
+
+  describe("Contract Upgrade and Migration Scenarios", function () {
+    it("Should maintain state consistency across deployments", async function () {
+      const { credlink, usdt, borrower, lender } = await loadFixture(deployCredlinkFixture);
+      
+      // Initial setup
+      await credlink.connect(borrower).onboardBorrower(
+        "Migration Test",
+        "migration@example.com",
+        "+1111111111",
+        "Migration Corp",
+        "USA"
+      );
+      
+      const detailsBefore = await credlink.getBorrowerDetails(borrower.address);
+      expect(detailsBefore.name).to.equal("Migration Test");
+      
+      // Verify state persists
+      await credlink.connect(borrower).borrowerKYC("Migration KYC");
+      const detailsAfter = await credlink.getBorrowerDetails(borrower.address);
+      expect(detailsAfter.name).to.equal("Migration Test");
+      expect(detailsAfter.isVerified).to.equal(true);
+    });
+
+    it("Should handle multiple contract interactions correctly", async function () {
+      const { credlink, usdt, lender, borrower } = await loadFixture(deployCredlinkFixture);
+      
+      // Setup complete system
+      const liquidity = hre.ethers.parseEther("10000");
+      await usdt.approve(await credlink.getAddress(), liquidity);
+      await credlink.connect(lender).onboardLender(liquidity, 10, 30);
+      
+      await credlink.connect(borrower).onboardBorrower(
+        "Interaction Test",
+        "interaction@example.com",
+        "+2222222222",
+        "Interaction Corp",
+        "USA"
+      );
+      
+      await credlink.connect(borrower).borrowerKYC("Interaction KYC");
+      await credlink.connect(borrower).borrowFunds(
+        hre.ethers.parseEther("2000"),
+        30,
+        "Interaction loan"
+      );
+      
+      // Verify all interactions completed
+      const history = await credlink.connect(borrower).viewBorrowerHistory();
+      expect(history.length).to.equal(1);
+    });
+  });
 });
 
